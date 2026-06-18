@@ -383,6 +383,7 @@ export default function PlayersPage() {
     if (!form.mobile.trim()) { toast.error('Mobile number is required'); return; }
     if (!form.playing_style) { toast.error('Playing Style is required'); return; }
     if (!form.age) { toast.error('Age is required'); return; }
+    if (!form.crickheroes_url.trim()) { toast.error('CricHeroes Profile URL is required'); return; }
     if (!editing && !photo) { toast.error('Photo is required'); return; }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
@@ -546,7 +547,7 @@ export default function PlayersPage() {
                   </div>
                   <div><Label>Age *</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} required min="5" max="100" className="bg-navy-lighter/50" /></div>
                 </div>
-                <div><Label>CricHeroes Profile URL</Label><Input value={form.crickheroes_url} onChange={(e) => setForm({ ...form, crickheroes_url: e.target.value })} placeholder="https://cricheroes.com/..." className="bg-navy-lighter/50" /></div>
+                <div><Label>CricHeroes Profile URL *</Label><Input value={form.crickheroes_url} onChange={(e) => setForm({ ...form, crickheroes_url: e.target.value })} required placeholder="https://cricheroes.com/..." className="bg-navy-lighter/50" /></div>
                 <div><Label>Photo {!editing ? '*' : ''}</Label><Input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} className="bg-navy-lighter/50" />{editing && <p className="text-xs text-muted-foreground mt-1">Leave empty to keep current photo</p>}</div>
                 <Button type="submit" className="w-full bg-gold hover:bg-gold-dark text-navy">{editing ? 'Update' : 'Add'} Player</Button>
               </form>

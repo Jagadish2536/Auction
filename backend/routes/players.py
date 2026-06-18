@@ -91,6 +91,10 @@ def create_player(tournament_id):
     if not age:
         return jsonify({'error': 'Age is required'}), 400
 
+    raw_crickheroes = data.get('crickheroes_url')
+    if not raw_crickheroes or not str(raw_crickheroes).strip():
+        return jsonify({'error': 'CricHeroes Profile URL is required'}), 400
+
     raw_base_price = data.get('base_price')
     base_price = float(raw_base_price) if (raw_base_price is not None and str(raw_base_price).strip() != '') else (tournament.default_base_price if tournament.default_base_price is not None else 1000.0)
 
