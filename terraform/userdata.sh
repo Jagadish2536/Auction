@@ -1,108 +1,74 @@
 #!/usr/bin/env bash
-# Update and install system dependencies
+# ============================================================
+# JV Cricket Auction - EC2 Bootstrap (Terraform userdata)
+# Installs Docker, clones repo, configures env, starts app
+# ============================================================
+set -e
+exec > >(tee /var/log/userdata.log) 2>&1
+
+echo "🚀 Starting JV Cricket Auction setup..."
 export DEBIAN_FRONTEND=noninteractive
+
+# ── System Updates ──────────────────────────────────
 apt-get update -y
 apt-get upgrade -y
-apt-get install -y git python3-pip python3-venv postgresql postgresql-contrib nginx curl
 
-# Install Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
+# ── Install Docker ──────────────────────────────────
+apt-get install -y ca-certificates curl gnupg git
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Configure PostgreSQL
-sudo -u postgres psql -c "CREATE DATABASE auction;"
-sudo -u postgres psql -c "CREATE USER postgres WITH PASSWORD '${db_password}';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE auction TO postgres;"
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# Clone project and set up
-mkdir -p /var/www/jv-cricket-auction
-cd /var/www/jv-cricket-auction
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+usermod -aG docker ubuntu
 
-# In a real pipeline, the code would be fetched from Git/S3.
-# For now, create placeholders and folders
-mkdir -p backend frontend uploads/logos uploads/team_logos uploads/players
+# ── Install Certbot ─────────────────────────────────
+apt-get install -y certbot
 
-# Set up backend virtual env
-cd backend
-python3 -m venv venv
-source venv/bin/activate
+# ── Clone Project ───────────────────────────────────
+mkdir -p /var/www
+cd /var/www
+git clone https://github.com/Jagadish2536/Auction.git jv-cricket-auction
+cd jv-cricket-auction
 
-# Write environment file for production
-cat <<EOT > .env
-FLASK_ENV=production
-FLASK_DEBUG=0
-SECRET_KEY=production-secret-key-change-me
-JWT_SECRET_KEY=production-jwt-secret-key-change-me
-DATABASE_URL=postgresql://postgres:${db_password}@localhost/auction
-UPLOAD_FOLDER=/var/www/jv-cricket-auction/uploads
-MAX_CONTENT_LENGTH=16777216
+# ── Create self-signed SSL (replaced by Let's Encrypt later) ──
+mkdir -p nginx/ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout nginx/ssl/privkey.pem \
+    -out nginx/ssl/fullchain.pem \
+    -subj "/CN=${domain_name}"
+
+# ── Write production .env ───────────────────────────
+cat > .env <<EOF
+DB_PASSWORD=${db_password}
+SECRET_KEY=${app_secret}
+JWT_SECRET_KEY=${jwt_secret}
 FRONTEND_URL=https://${domain_name}
-EOT
+NEXT_PUBLIC_API_URL=https://${domain_name}
+MANAGER_EMAIL=${manager_email}
+MANAGER_PASSWORD=${manager_password}
+AWS_S3_BUCKET=${s3_bucket}
+AWS_REGION=${aws_region}
+EOF
 
-# Set up systemd service for Gunicorn with Eventlet
-cat <<EOT > /etc/systemd/system/auction-backend.service
-[Unit]
-Description=Gunicorn instance to serve JV Cricket Auction Backend
-After=network.target
+# ── Set ownership ───────────────────────────────────
+chown -R ubuntu:ubuntu /var/www/jv-cricket-auction
 
-[Service]
-User=ubuntu
-WorkingDirectory=/var/www/jv-cricket-auction/backend
-ExecStart=/var/www/jv-cricket-auction/backend/venv/bin/gunicorn --worker-class eventlet -w 1 -b 127.0.0.1:5000 app:app
-Restart=always
+# ── Start application ──────────────────────────────
+sudo -u ubuntu docker compose -f docker-compose.prod.yml up -d --build
 
-[Install]
-WantedBy=multi-user.target
-EOT
-
-systemctl start auction-backend
-systemctl enable auction-backend
-
-# Set up Nginx config to reverse proxy both Next.js and Flask API/Sockets
-cat <<EOT > /etc/nginx/sites-available/jv-cricket
-server {
-    listen 80;
-    server_name ${domain_name} www.${domain_name};
-
-    # Frontend Next.js static and server
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-    }
-
-    # Backend API
-    location /api {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    # Socket.IO support
-    location /socket.io {
-        proxy_pass http://127.0.0.1:5000/socket.io;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-
-    # Serve uploaded images directly via Nginx for performance
-    location /uploads {
-        alias /var/www/jv-cricket-auction/uploads;
-        expires 7d;
-        add_header Cache-Control "public, no-transform";
-    }
-}
-EOT
-
-ln -s /etc/nginx/sites-available/jv-cricket /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-systemctl restart nginx
+echo "============================================"
+echo "✅ JV Cricket Auction deployed!"
+echo "   Domain: https://${domain_name}"
+echo "   S3 Bucket: ${s3_bucket}"
+echo ""
+echo "   For real SSL, run as ubuntu:"
+echo "   docker compose -f docker-compose.prod.yml stop nginx"
+echo "   sudo certbot certonly --standalone -d ${domain_name} -d www.${domain_name}"
+echo "   sudo cp /etc/letsencrypt/live/${domain_name}/fullchain.pem nginx/ssl/"
+echo "   sudo cp /etc/letsencrypt/live/${domain_name}/privkey.pem nginx/ssl/"
+echo "   docker compose -f docker-compose.prod.yml up -d nginx"
+echo "============================================"

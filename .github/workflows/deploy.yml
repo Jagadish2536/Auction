@@ -47,6 +47,10 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
             MANAGER_EMAIL=${{ secrets.MANAGER_EMAIL }}
             MANAGER_PASSWORD=${{ secrets.MANAGER_PASSWORD }}
+            AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+            AWS_REGION=ap-south-2
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             EOF
 
             # ── Build and deploy ──

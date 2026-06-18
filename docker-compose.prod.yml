@@ -53,6 +53,10 @@ services:
       UPLOAD_FOLDER: /app/uploads
       MANAGER_EMAIL: ${MANAGER_EMAIL:-jagadishvarma99@gmail.com}
       MANAGER_PASSWORD: ${MANAGER_PASSWORD:-change-this-password}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - uploads_data:/app/uploads
     networks:

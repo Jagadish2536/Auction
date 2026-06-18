@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region for deployment"
   type        = string
-  default     = "ap-south-1"
+  default     = "ap-south-2"
 }
 
 variable "domain_name" {
@@ -32,5 +32,32 @@ variable "db_password" {
 variable "project_name" {
   description = "Project name for resource tagging"
   type        = string
-  default     = "Jagadish-cricket-auction"
+  default     = "jv-cricket-auction"
+}
+
+variable "manager_email" {
+  description = "Manager account email"
+  type        = string
+  default     = "jagadishvarma99@gmail.com"
+}
+
+variable "manager_password" {
+  description = "Manager account password"
+  type        = string
+  sensitive   = true
+  default     = "change-this-password"
+}
+
+variable "jwt_secret" {
+  description = "JWT secret key"
+  type        = string
+  sensitive   = true
+  default     = "change-this-jwt-secret"
+}
+
+variable "app_secret" {
+  description = "Flask secret key"
+  type        = string
+  sensitive   = true
+  default     = "change-this-app-secret"
 }

@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
         protocol: 'http',
         hostname: '**.jagadishvarma.xyz',
       },
+      {
+        protocol: 'https',
+        hostname: '**.s3.ap-south-2.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.s3.amazonaws.com',
+      },
     ],
   },
 };

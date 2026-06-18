@@ -51,4 +51,16 @@ api.interceptors.response.use(
 );
 
 export const UPLOAD_BASE = API_BASE;
+
+/**
+ * Get full image URL. Handles both:
+ * - S3 URLs (https://bucket.s3.region.amazonaws.com/...) → used directly
+ * - Local paths (/uploads/subfolder/file.ext) → prefixed with UPLOAD_BASE
+ */
+export function getImageUrl(path: string | null | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${UPLOAD_BASE}${path}`;
+}
+
 export default api;
