@@ -23,6 +23,12 @@ const statusColors: Record<string, string> = {
   unsold: 'bg-red-500/20 text-red-400',
 };
 
+function cleanCricHeroesUrl(raw: string): string {
+  const urlMatch = raw.match(/https?:\/\/[^\s]+/);
+  if (urlMatch) return urlMatch[0];
+  return raw.startsWith('http') ? raw : `https://${raw}`;
+}
+
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -71,15 +77,11 @@ const PlayerRow = memo(function PlayerRow({
           <div>
             <div className="flex items-center gap-1.5">
               <p className="font-medium text-foreground text-sm">{p.name}</p>
-              {p.crickheroes_url && (() => {
-                const urlMatch = p.crickheroes_url.match(/https?:\/\/[^\s]+/);
-                const cleanUrl = urlMatch ? urlMatch[0] : (p.crickheroes_url.startsWith('http') ? p.crickheroes_url : `https://${p.crickheroes_url}`);
-                return (
-                  <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light" title="CricHeroes Profile" onClick={(e) => e.stopPropagation()}>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                );
-              })()}
+              {p.crickheroes_url && (
+                <a href={cleanCricHeroesUrl(p.crickheroes_url)} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light" title="CricHeroes Profile" onClick={(e) => e.stopPropagation()}>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
             </div>
             <p className="text-xs text-muted-foreground md:hidden">{p.village}</p>
           </div>
@@ -233,15 +235,11 @@ function PendingApprovalsTable({
                 <Badge variant="outline" className="text-xs border-gold/20 text-gold">{p.playing_style || '-'}</Badge>
               </td>
               <td className="px-4 py-3">
-                {p.crickheroes_url ? (() => {
-                  const urlMatch = p.crickheroes_url.match(/https?:\/\/[^\s]+/);
-                  const cleanUrl = urlMatch ? urlMatch[0] : (p.crickheroes_url.startsWith('http') ? p.crickheroes_url : `https://${p.crickheroes_url}`);
-                  return (
-                    <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold hover:underline text-xs">
-                      Profile <ExternalLink className="w-3 h-3" />
-                    </a>
-                  );
-                })() : (
+                {p.crickheroes_url ? (
+                  <a href={cleanCricHeroesUrl(p.crickheroes_url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold hover:underline text-xs">
+                    Profile <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
                   <span className="text-muted-foreground text-xs">-</span>
                 )}
               </td>
