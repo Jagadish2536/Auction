@@ -47,3 +47,11 @@ backend/check_db.py
 backend/clear_db_except_users.py
 backend/seed_demo.py
 backend/seed_scale_data.py
+
+# ===== Terraform =====
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+terraform/*.tfplan
+.terraform/

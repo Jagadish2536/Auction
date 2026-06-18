@@ -208,13 +208,15 @@ resource "aws_eip" "app" {
   }
 }
 
-# --- Route53 ---
+# --- Route53 (only if enable_dns = true) ---
 data "aws_route53_zone" "main" {
-  name = var.domain_name
+  count = var.enable_dns ? 1 : 0
+  name  = var.domain_name
 }
 
 resource "aws_route53_record" "app" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  count   = var.enable_dns ? 1 : 0
+  zone_id = data.aws_route53_zone.main[0].zone_id
   name    = var.domain_name
   type    = "A"
   ttl     = 300
@@ -222,15 +224,17 @@ resource "aws_route53_record" "app" {
 }
 
 resource "aws_route53_record" "www" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  count   = var.enable_dns ? 1 : 0
+  zone_id = data.aws_route53_zone.main[0].zone_id
   name    = "www.${var.domain_name}"
   type    = "CNAME"
   ttl     = 300
   records = [var.domain_name]
 }
 
-# --- ACM Certificate ---
+# --- ACM Certificate (only if enable_dns = true) ---
 resource "aws_acm_certificate" "main" {
+  count                     = var.enable_dns ? 1 : 0
   provider                  = aws.us_east_1
   domain_name               = var.domain_name
   subject_alternative_names = ["*.${var.domain_name}"]

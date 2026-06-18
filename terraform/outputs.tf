@@ -5,7 +5,7 @@ output "server_public_ip" {
 
 output "route53_dns_record" {
   description = "Configured domain name record"
-  value       = aws_route53_record.app.fqdn
+  value       = var.enable_dns ? aws_route53_record.app[0].fqdn : "DNS not configured - use IP: ${aws_eip.app.public_ip}"
 }
 
 output "s3_bucket_name" {
@@ -26,4 +26,9 @@ output "ec2_instance_id" {
 output "ssh_command" {
   description = "SSH command to connect to the server"
   value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_eip.app.public_ip}"
+}
+
+output "app_url" {
+  description = "Application URL"
+  value       = var.enable_dns ? "https://${var.domain_name}" : "http://${aws_eip.app.public_ip}"
 }

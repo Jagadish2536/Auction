@@ -61,3 +61,9 @@ variable "app_secret" {
   sensitive   = true
   default     = "change-this-app-secret"
 }
+
+variable "enable_dns" {
+  description = "Set to true to create Route53 records and ACM certificate (requires existing hosted zone)"
+  type        = bool
+  default     = false
+}
