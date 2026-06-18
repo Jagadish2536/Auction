@@ -3,9 +3,14 @@ output "server_public_ip" {
   value       = aws_eip.app.public_ip
 }
 
-output "route53_dns_record" {
-  description = "Configured domain name record"
-  value       = var.enable_dns ? aws_route53_record.app[0].fqdn : "DNS not configured - use IP: ${aws_eip.app.public_ip}"
+output "route53_nameservers" {
+  description = "Nameservers to set in GoDaddy DNS"
+  value       = aws_route53_zone.main.name_servers
+}
+
+output "route53_zone_id" {
+  description = "Route53 Hosted Zone ID"
+  value       = aws_route53_zone.main.zone_id
 }
 
 output "s3_bucket_name" {
@@ -30,5 +35,5 @@ output "ssh_command" {
 
 output "app_url" {
   description = "Application URL"
-  value       = var.enable_dns ? "https://${var.domain_name}" : "http://${aws_eip.app.public_ip}"
+  value       = "https://${var.domain_name}"
 }
