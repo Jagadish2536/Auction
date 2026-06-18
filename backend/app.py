@@ -44,8 +44,13 @@ def create_app(config_name=None):
             'pool_pre_ping': True,
         }
 
-    # --- Performance: In-memory cache (SimpleCache, zero dependencies) ---
-    app.config['CACHE_TYPE'] = 'SimpleCache'
+    # --- Performance: Cache — Redis when available, otherwise in-memory ---
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        app.config['CACHE_TYPE'] = 'RedisCache'
+        app.config['CACHE_REDIS_URL'] = redis_url
+    else:
+        app.config['CACHE_TYPE'] = 'SimpleCache'
     app.config['CACHE_DEFAULT_TIMEOUT'] = 10
 
     # Initialize extensions

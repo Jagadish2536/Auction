@@ -30,7 +30,7 @@ class Team(db.Model):
     def player_count(self):
         return self.players.count()
 
-    def to_dict(self):
+    def to_dict(self, player_count_override=None):
         return {
             'id': self.id,
             'tournament_id': self.tournament_id,
@@ -41,6 +41,6 @@ class Team(db.Model):
             'budget': self.budget,
             'remaining_budget': self.remaining_budget,
             'max_players': self.max_players,
-            'player_count': self.player_count,
+            'player_count': player_count_override if player_count_override is not None else self.player_count,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }

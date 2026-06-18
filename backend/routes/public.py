@@ -85,9 +85,19 @@ def get_live_state(tournament_id):
 
     sponsors = Sponsor.query.filter_by(tournament_id=tournament_id).all()
 
+    # Batch player counts per team — avoids N+1 from team.player_count
+    from sqlalchemy import func
+    team_pc_rows = (
+        db.session.query(Player.sold_team_id, func.count(Player.id))
+        .filter(Player.tournament_id == tournament_id, Player.status == 'sold')
+        .group_by(Player.sold_team_id)
+        .all()
+    )
+    team_pc = {row[0]: row[1] for row in team_pc_rows}
+
     response = jsonify({
         'auction_state': auction_state.to_dict(),
-        'teams': [t.to_dict() for t in teams],
+        'teams': [t.to_dict(player_count_override=team_pc.get(t.id, 0)) for t in teams],
         'recent_sold': [p.to_dict() for p in recent_sold],
         'sponsors': [s.to_dict() for s in sponsors],
     })

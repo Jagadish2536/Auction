@@ -75,8 +75,8 @@ def _start_server_timer(socketio, tournament_id, seconds=30):
 def _get_full_state(tournament_id):
     """
     Build complete auction state payload with minimal DB queries.
-    Uses joined loads and a single grouped count query — scales to
-    100 simultaneous tournaments without contention.
+    Uses joined loads and grouped count queries — exactly 4 queries
+    regardless of team count, scales to 100+ simultaneous tournaments.
     """
     state = AuctionState.query.filter_by(tournament_id=tournament_id).first()
 
@@ -118,9 +118,19 @@ def _get_full_state(tournament_id):
     )
     counts = {row[0]: row[1] for row in status_counts}
 
+    # Batch player counts per team — single GROUP BY query replaces N separate COUNT(*)
+    # This eliminates the N+1 query from team.player_count property
+    team_player_counts_rows = (
+        db.session.query(Player.sold_team_id, func.count(Player.id))
+        .filter(Player.tournament_id == tournament_id, Player.status == 'sold')
+        .group_by(Player.sold_team_id)
+        .all()
+    )
+    team_player_counts = {row[0]: row[1] for row in team_player_counts_rows}
+
     return {
         'auction': state.to_dict() if state else None,
-        'teams': [t.to_dict() for t in teams],
+        'teams': [t.to_dict(player_count_override=team_player_counts.get(t.id, 0)) for t in teams],
         'recent_sold': recent_sold,
         'stats': {
             'total': sum(counts.values()),
