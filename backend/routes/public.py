@@ -180,6 +180,13 @@ def register_player_public(tournament_id):
     if 'photo' not in request.files:
         return jsonify({'error': 'Profile photo is required.'}), 400
 
+    # Extract actual URL from CricHeroes share text
+    import re
+    if crickheroes_url:
+        url_match = re.search(r'https?://[^\s]+', crickheroes_url)
+        if url_match:
+            crickheroes_url = url_match.group(0)
+
     # Create new Player
     player = Player(
         tournament_id=tournament.id,
@@ -188,7 +195,7 @@ def register_player_public(tournament_id):
         mobile=mobile_str,
         playing_style=playing_style.strip(),
         age=int(age) if str(age).isdigit() else None,
-        crickheroes_url=crickheroes_url.strip(),
+        crickheroes_url=crickheroes_url.strip() if crickheroes_url else None,
         base_price=tournament.default_base_price if tournament.default_base_price is not None else 1000.0,
         status='pending'
     )

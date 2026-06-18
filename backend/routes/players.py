@@ -6,8 +6,21 @@ from models.player import Player
 from models.tournament import Tournament
 from middleware import role_required, tournament_scope_required
 from utils import save_upload, allowed_file
+import re
 
 players_bp = Blueprint('players', __name__, url_prefix='/api/tournaments/<int:tournament_id>/players')
+
+
+def extract_url(text):
+    """Extract actual URL from CricHeroes share text like 'Hey! Here is my Cricket profile... https://chshare.link/player/xxx'"""
+    if not text:
+        return text
+    text = text.strip()
+    match = re.search(r'https?://[^\s]+', text)
+    if match:
+        return match.group(0)
+    # If no http URL found, return original (might already be clean)
+    return text
 
 
 @players_bp.route('', methods=['GET'])
@@ -64,25 +77,40 @@ def create_player(tournament_id):
     if not name:
         return jsonify({'error': 'Player name is required'}), 400
 
+    village = data.get('village')
+    mobile_str = str(data.get('mobile') or '').strip()
+    playing_style = data.get('playing_style')
+    age = data.get('age')
+
+    if not village or not str(village).strip():
+        return jsonify({'error': 'Village is required'}), 400
+    if not mobile_str:
+        return jsonify({'error': 'Mobile number is required'}), 400
+    if not playing_style or not str(playing_style).strip():
+        return jsonify({'error': 'Playing Style is required'}), 400
+    if not age:
+        return jsonify({'error': 'Age is required'}), 400
+
     raw_base_price = data.get('base_price')
     base_price = float(raw_base_price) if (raw_base_price is not None and str(raw_base_price).strip() != '') else (tournament.default_base_price if tournament.default_base_price is not None else 1000.0)
 
-    mobile_str = str(data.get('mobile') or '').strip()
     if mobile_str:
         existing_player = Player.query.filter_by(tournament_id=tournament_id, mobile=mobile_str).first()
         if existing_player:
             return jsonify({'error': 'This mobile number is already registered.'}), 400
 
+    crickheroes_url = extract_url(data.get('crickheroes_url'))
+
     player = Player(
         tournament_id=tournament_id,
         name=name,
-        village=data.get('village'),
+        village=str(village).strip(),
         mobile=mobile_str if mobile_str else None,
-        playing_style=data.get('playing_style'),
-        age=int(data['age']) if data.get('age') else None,
+        playing_style=str(playing_style).strip(),
+        age=int(age) if age else None,
         base_price=base_price,
         status='available',
-        crickheroes_url=data.get('crickheroes_url')
+        crickheroes_url=crickheroes_url
     )
 
     if hasattr(request, 'files') and 'photo' in request.files:
@@ -129,7 +157,7 @@ def update_player(tournament_id, player_id):
     if data.get('base_price') is not None:
         player.base_price = float(data['base_price'])
     if data.get('crickheroes_url') is not None:
-        player.crickheroes_url = data.get('crickheroes_url')
+        player.crickheroes_url = extract_url(data.get('crickheroes_url'))
     if data.get('status') is not None:
         player.status = data.get('status')
 

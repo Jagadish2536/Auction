@@ -71,11 +71,15 @@ const PlayerRow = memo(function PlayerRow({
           <div>
             <div className="flex items-center gap-1.5">
               <p className="font-medium text-foreground text-sm">{p.name}</p>
-              {p.crickheroes_url && (
-                <a href={p.crickheroes_url} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light" title="CricHeroes Profile">
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
+              {p.crickheroes_url && (() => {
+                const urlMatch = p.crickheroes_url.match(/https?:\/\/[^\s]+/);
+                const cleanUrl = urlMatch ? urlMatch[0] : (p.crickheroes_url.startsWith('http') ? p.crickheroes_url : `https://${p.crickheroes_url}`);
+                return (
+                  <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light" title="CricHeroes Profile" onClick={(e) => e.stopPropagation()}>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                );
+              })()}
             </div>
             <p className="text-xs text-muted-foreground md:hidden">{p.village}</p>
           </div>
@@ -229,10 +233,15 @@ function PendingApprovalsTable({
                 <Badge variant="outline" className="text-xs border-gold/20 text-gold">{p.playing_style || '-'}</Badge>
               </td>
               <td className="px-4 py-3">
-                {p.crickheroes_url ? (
-                  <a href={p.crickheroes_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold hover:underline text-xs">
-                    Profile <ExternalLink className="w-3 h-3" />
-                  </a>
+                {p.crickheroes_url ? (() => {
+                  const urlMatch = p.crickheroes_url.match(/https?:\/\/[^\s]+/);
+                  const cleanUrl = urlMatch ? urlMatch[0] : (p.crickheroes_url.startsWith('http') ? p.crickheroes_url : `https://${p.crickheroes_url}`);
+                  return (
+                    <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold hover:underline text-xs">
+                      Profile <ExternalLink className="w-3 h-3" />
+                    </a>
+                  );
+                })()
                 ) : (
                   <span className="text-muted-foreground text-xs">-</span>
                 )}
@@ -371,6 +380,13 @@ export default function PlayersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tournament) return;
+    // Validate all required fields
+    if (!form.name.trim()) { toast.error('Player Name is required'); return; }
+    if (!form.village.trim()) { toast.error('Village is required'); return; }
+    if (!form.mobile.trim()) { toast.error('Mobile number is required'); return; }
+    if (!form.playing_style) { toast.error('Playing Style is required'); return; }
+    if (!form.age) { toast.error('Age is required'); return; }
+    if (!editing && !photo) { toast.error('Photo is required'); return; }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
     if (photo) fd.append('photo', photo);
@@ -515,14 +531,14 @@ export default function PlayersPage() {
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="bg-navy-lighter/50" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Village</Label><Input value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} className="bg-navy-lighter/50" /></div>
-                  <div><Label>Mobile</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} className="bg-navy-lighter/50" /></div>
+                  <div><Label>Village *</Label><Input value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} required className="bg-navy-lighter/50" /></div>
+                  <div><Label>Mobile *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} required className="bg-navy-lighter/50" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Playing Style</Label>
+                    <Label>Playing Style *</Label>
                     <Select value={form.playing_style} onValueChange={(v) => setForm({ ...form, playing_style: v || '' })}>
-                      <SelectTrigger className="bg-navy-lighter/50"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectTrigger className={`bg-navy-lighter/50 ${!form.playing_style ? 'text-muted-foreground' : ''}`}><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent className="glass border-gold/10">
                         <SelectItem value="Batsman">Batsman</SelectItem>
                         <SelectItem value="Bowler">Bowler</SelectItem>
@@ -531,10 +547,10 @@ export default function PlayersPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Age</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="bg-navy-lighter/50" /></div>
+                  <div><Label>Age *</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} required min="5" max="100" className="bg-navy-lighter/50" /></div>
                 </div>
                 <div><Label>CricHeroes Profile URL</Label><Input value={form.crickheroes_url} onChange={(e) => setForm({ ...form, crickheroes_url: e.target.value })} placeholder="https://cricheroes.com/..." className="bg-navy-lighter/50" /></div>
-                <div><Label>Photo</Label><Input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} className="bg-navy-lighter/50" /></div>
+                <div><Label>Photo {!editing ? '*' : ''}</Label><Input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} className="bg-navy-lighter/50" />{editing && <p className="text-xs text-muted-foreground mt-1">Leave empty to keep current photo</p>}</div>
                 <Button type="submit" className="w-full bg-gold hover:bg-gold-dark text-navy">{editing ? 'Update' : 'Add'} Player</Button>
               </form>
             </DialogContent>
