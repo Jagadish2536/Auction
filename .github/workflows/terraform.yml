@@ -1,0 +1,90 @@
+name: Infrastructure (Terraform)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  AWS_REGION: ap-south-2
+  TF_WORKING_DIR: terraform
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action || 'plan' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── AWS Authentication ──────────────────────
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Setup Terraform ─────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      # ── Terraform Init ──────────────────────────
+      - name: Terraform Init
+        run: terraform init
+
+      # ── Terraform Format Check ──────────────────
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive || true
+
+      # ── Write tfvars from secrets ───────────────
+      - name: Create terraform.tfvars
+        run: |
+          cat > terraform.tfvars <<EOF
+          db_password      = "${{ secrets.DB_PASSWORD }}"
+          app_secret       = "${{ secrets.SECRET_KEY }}"
+          jwt_secret       = "${{ secrets.JWT_SECRET_KEY }}"
+          manager_email    = "${{ secrets.MANAGER_EMAIL }}"
+          manager_password = "${{ secrets.MANAGER_PASSWORD }}"
+          key_name         = "${{ secrets.AWS_KEY_NAME }}"
+          EOF
+
+      # ── Terraform Plan ──────────────────────────
+      - name: Terraform Plan
+        run: terraform plan -no-color -out=tfplan
+        continue-on-error: false
+
+      # ── Terraform Apply (only on manual dispatch with 'apply') ──
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+      # ── Terraform Destroy (only on manual dispatch with 'destroy') ──
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
+
+      # ── Show Outputs ────────────────────────────
+      - name: Terraform Outputs
+        if: github.event.inputs.action == 'apply'
+        run: terraform output
