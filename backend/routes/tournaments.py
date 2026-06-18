@@ -178,10 +178,63 @@ def update_tournament(tournament_id):
 @role_required('manager')
 @tournament_scope_required
 def delete_tournament(tournament_id):
-    """Delete a tournament."""
+    """Force delete a tournament and ALL associated data (players, teams, bids, etc.)."""
+    from models.auction import AuctionState, BidHistory, Sponsor, Advertisement
+    from models.player import Player
+    from models.team import Team
+    from models.user import User
+
     tournament = Tournament.query.get_or_404(tournament_id)
-    db.session.delete(tournament)
-    db.session.commit()
-    from app import socketio
-    socketio.emit('tournament:change', {'action': 'deleted', 'tournament_id': tournament_id})
-    return jsonify({'message': 'Tournament deleted successfully'}), 200
+    tournament_name = tournament.name
+
+    try:
+        # 1. Clear AuctionState FK references to players/teams first
+        auction_state = AuctionState.query.filter_by(tournament_id=tournament_id).first()
+        if auction_state:
+            auction_state.current_player_id = None
+            auction_state.current_team_id = None
+            db.session.flush()
+
+        # 2. Delete all bid history for this tournament
+        BidHistory.query.filter_by(tournament_id=tournament_id).delete()
+
+        # 3. Clear player sold_team references (breaks Player -> Team FK)
+        Player.query.filter(
+            Player.tournament_id == tournament_id,
+            Player.sold_team_id.isnot(None)
+        ).update({'sold_team_id': None, 'sold_price': None, 'sold_at': None}, synchronize_session='fetch')
+        db.session.flush()
+
+        # 4. Delete all players (all statuses: pending, available, sold, unsold)
+        Player.query.filter_by(tournament_id=tournament_id).delete()
+
+        # 5. Delete all teams
+        Team.query.filter_by(tournament_id=tournament_id).delete()
+
+        # 6. Delete sponsors and advertisements
+        Sponsor.query.filter_by(tournament_id=tournament_id).delete()
+        Advertisement.query.filter_by(tournament_id=tournament_id).delete()
+
+        # 7. Delete auction state
+        if auction_state:
+            db.session.delete(auction_state)
+
+        # 8. Unlink users scoped to this tournament (don't delete users)
+        User.query.filter_by(tournament_id=tournament_id).update(
+            {'tournament_id': None}, synchronize_session='fetch'
+        )
+
+        # 9. Delete the tournament itself
+        db.session.delete(tournament)
+        db.session.commit()
+
+        from app import socketio
+        socketio.emit('tournament:change', {'action': 'deleted', 'tournament_id': tournament_id})
+        return jsonify({
+            'message': f'Tournament "{tournament_name}" and all associated data deleted successfully'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f'[ERROR] Failed to delete tournament {tournament_id}: {str(e)}')
+        return jsonify({'error': f'Failed to delete tournament: {str(e)}'}), 500

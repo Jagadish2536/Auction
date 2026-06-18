@@ -111,8 +111,10 @@ export default function TournamentsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this tournament?')) return;
-    try { await api.delete(`/tournaments/${id}`); toast.success('Deleted'); load(); } catch { toast.error('Failed'); }
+    const t = tournaments.find(x => x.id === id);
+    const name = t?.name || 'this tournament';
+    if (!confirm(`⚠️ DELETE "${name}"?\n\nThis will permanently delete:\n• All players (pending, available, sold, unsold)\n• All teams\n• All bid history\n• Auction state\n• Sponsors & advertisements\n\nThis action CANNOT be undone!`)) return;
+    try { await api.delete(`/tournaments/${id}`); toast.success(`Tournament "${name}" deleted with all data`); load(); } catch { toast.error('Failed to delete tournament'); }
   };
 
   return (
