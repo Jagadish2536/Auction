@@ -38,10 +38,12 @@ const PlayerRow = memo(function PlayerRow({
   p,
   onEdit,
   onDelete,
+  onEnlarge,
 }: {
   p: Player;
   onEdit: (p: Player) => void;
   onDelete: (id: number) => void;
+  onEnlarge: (url: string) => void;
 }) {
   return (
     <tr className="border-b border-border/20 hover:bg-navy-lighter/30 transition-colors">
@@ -56,8 +58,10 @@ const PlayerRow = memo(function PlayerRow({
                 decoding="async"
                 width={36}
                 height={36}
-                className="w-full h-full object-cover aspect-square"
+                className="w-full h-full object-cover aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
                 style={{ objectFit: 'cover' }}
+                onClick={() => onEnlarge(getImageUrl(p.photo))}
+                title="Click to enlarge"
                 onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
               />
             ) : (
@@ -104,10 +108,11 @@ const PlayerRow = memo(function PlayerRow({
 const VIRTUAL_ROW_HEIGHT = 52;
 const BUFFER_ROWS = 15;
 
-function VirtualTable({ rows, onEdit, onDelete }: {
+function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
   rows: Player[];
   onEdit: (p: Player) => void;
   onDelete: (id: number) => void;
+  onEnlarge: (url: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -151,7 +156,7 @@ function VirtualTable({ rows, onEdit, onDelete }: {
           {/* Spacer for virtual scroll top */}
           {offsetY > 0 && <tr><td colSpan={7} style={{ height: offsetY, padding: 0 }} /></tr>}
           {visibleRows.map((p) => (
-            <PlayerRow key={p.id} p={p} onEdit={onEdit} onDelete={onDelete} />
+            <PlayerRow key={p.id} p={p} onEdit={onEdit} onDelete={onDelete} onEnlarge={onEnlarge} />
           ))}
           {/* Spacer for virtual scroll bottom */}
           {totalHeight - offsetY - visibleRows.length * VIRTUAL_ROW_HEIGHT > 0 && (
@@ -173,10 +178,12 @@ function PendingApprovalsTable({
   rows,
   onApprove,
   onReject,
+  onEnlarge,
 }: {
   rows: Player[];
   onApprove: (id: number) => void;
   onReject: (id: number) => void;
+  onEnlarge: (url: string) => void;
 }) {
   return (
     <div className="overflow-x-auto w-full">
@@ -202,8 +209,10 @@ function PendingApprovalsTable({
                       <img
                         src={getImageUrl(p.photo)}
                         alt={p.name}
-                        className="w-full h-full object-cover aspect-square"
+                        className="w-full h-full object-cover aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
                         style={{ objectFit: 'cover' }}
+                        onClick={() => onEnlarge(getImageUrl(p.photo))}
+                        title="Click to enlarge"
                         onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                       />
                     ) : (
@@ -278,6 +287,7 @@ export default function PlayersPage() {
   const [form, setForm] = useState({ name: '', village: '', mobile: '', playing_style: '', age: '', crickheroes_url: '' });
   const [photo, setPhoto] = useState<File | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
 
   const regUrl = typeof window !== 'undefined' ? `${window.location.origin}/register${tournament?.registration_code ? `?code=${tournament.registration_code}` : ''}` : '';
 
@@ -573,11 +583,20 @@ export default function PlayersPage() {
             ))}
           </div>
         ) : filter === 'pending' ? (
-          <PendingApprovalsTable rows={filtered} onApprove={handleApprove} onReject={handleReject} />
+          <PendingApprovalsTable rows={filtered} onApprove={handleApprove} onReject={handleReject} onEnlarge={setEnlargedPhoto} />
         ) : (
-          <VirtualTable rows={filtered} onEdit={handleEdit} onDelete={handleDelete} />
+          <VirtualTable rows={filtered} onEdit={handleEdit} onDelete={handleDelete} onEnlarge={setEnlargedPhoto} />
         )}
       </Card>
+
+      {/* Photo Enlarge Dialog */}
+      <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
+        <DialogContent className="glass border-gold/10 p-2 overflow-hidden max-w-[95vw] sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw] w-fit bg-navy/95 flex items-center justify-center">
+          {enlargedPhoto && (
+            <img src={enlargedPhoto} alt="Player Photo" className="max-w-full h-auto max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
