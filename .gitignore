@@ -1,0 +1,49 @@
+# ===== Python =====
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/instance/
+*.pyc
+*.pyo
+
+# ===== Node.js =====
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# ===== Environment & Secrets =====
+.env
+.env.local
+.env.production
+backend/.env
+frontend/.env.local
+
+# ===== Database =====
+*.db
+*.sqlite3
+
+# ===== Uploads (user content, not code) =====
+uploads/
+backend/uploads/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Build =====
+*.tsbuildinfo
+next-env.d.ts
+
+# ===== Scratch/Test =====
+backend/scratch/
+backend/test_*.py
+backend/check_db.py
+backend/clear_db_except_users.py
+backend/seed_demo.py
+backend/seed_scale_data.py

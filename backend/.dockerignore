@@ -1,0 +1,17 @@
+# Backend scratch/test files — not needed in Docker image
+venv/
+__pycache__/
+**/__pycache__/
+instance/
+*.pyc
+*.db
+*.sqlite3
+.env
+.env.*
+scratch/
+test_*.py
+check_db.py
+clear_db_except_users.py
+seed_demo.py
+seed_scale_data.py
+uploads/

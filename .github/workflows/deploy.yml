@@ -1,0 +1,72 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEPLOY_PATH: /var/www/jv-cricket-auction
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 300s
+          script: |
+            set -e
+
+            # ── Navigate to project ──
+            cd ${{ env.DEPLOY_PATH }}
+
+            # ── Pull latest code ──
+            echo "📥 Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            # ── Create production .env ──
+            echo "🔧 Writing production environment..."
+            cat > .env <<EOF
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            MANAGER_EMAIL=${{ secrets.MANAGER_EMAIL }}
+            MANAGER_PASSWORD=${{ secrets.MANAGER_PASSWORD }}
+            EOF
+
+            # ── Build and deploy ──
+            echo "🏗️ Building and deploying containers..."
+            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml up -d
+
+            # ── Clean up old images ──
+            docker image prune -f
+
+            # ── Health check ──
+            echo "🏥 Running health check..."
+            sleep 15
+            for i in {1..10}; do
+              if curl -sf http://localhost:5000/api/health > /dev/null 2>&1; then
+                echo "✅ Backend is healthy!"
+                break
+              fi
+              echo "⏳ Waiting for backend... ($i/10)"
+              sleep 5
+            done
+
+            echo "🚀 Deployment complete!"

@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL Database ──────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: auction
+      POSTGRES_USER: auction
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-this-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auction"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auction-net
+
+  # ── Redis (Socket.IO message queue) ──────────────
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auction-net
+
+  # ── Flask Backend (Gunicorn + Eventlet) ──────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://auction:${DB_PASSWORD:-change-this-password}@postgres:5432/auction
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-production-secret-change-me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-production-jwt-secret-change-me}
+      FRONTEND_URL: ${FRONTEND_URL:-https://jagadishvarma.xyz}
+      UPLOAD_FOLDER: /app/uploads
+      MANAGER_EMAIL: ${MANAGER_EMAIL:-jagadishvarma99@gmail.com}
+      MANAGER_PASSWORD: ${MANAGER_PASSWORD:-change-this-password}
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - auction-net
+
+  # ── Next.js Frontend ─────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://jagadishvarma.xyz}
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - auction-net
+
+  # ── Nginx Reverse Proxy ──────────────────────────
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - uploads_data:/var/www/uploads:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - auction-net
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  auction-net:
+    driver: bridge
