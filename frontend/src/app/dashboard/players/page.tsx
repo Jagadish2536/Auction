@@ -241,8 +241,7 @@ function PendingApprovalsTable({
                       Profile <ExternalLink className="w-3 h-3" />
                     </a>
                   );
-                })()
-                ) : (
+                })() : (
                   <span className="text-muted-foreground text-xs">-</span>
                 )}
               </td>
