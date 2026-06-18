@@ -86,6 +86,8 @@ def create_player(tournament_id):
         return jsonify({'error': 'Village is required'}), 400
     if not mobile_str:
         return jsonify({'error': 'Mobile number is required'}), 400
+    if not mobile_str.isdigit() or len(mobile_str) != 10:
+        return jsonify({'error': 'Mobile number must be exactly 10 digits.'}), 400
     if not playing_style or not str(playing_style).strip():
         return jsonify({'error': 'Playing Style is required'}), 400
     if not age:

@@ -381,6 +381,7 @@ export default function PlayersPage() {
     if (!form.name.trim()) { toast.error('Player Name is required'); return; }
     if (!form.village.trim()) { toast.error('Village is required'); return; }
     if (!form.mobile.trim()) { toast.error('Mobile number is required'); return; }
+    if (!/^\d{10}$/.test(form.mobile.trim())) { toast.error('Mobile number must be exactly 10 digits'); return; }
     if (!form.playing_style) { toast.error('Playing Style is required'); return; }
     if (!form.age) { toast.error('Age is required'); return; }
     if (!form.crickheroes_url.trim()) { toast.error('CricHeroes Profile URL is required'); return; }
