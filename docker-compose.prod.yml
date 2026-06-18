@@ -85,6 +85,10 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - uploads_data:/var/www/uploads:ro
+      - /etc/letsencrypt/live/jagadishvarma.xyz/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/jagadishvarma.xyz/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
     depends_on:
       - frontend
       - backend
@@ -94,6 +98,7 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  certbot_webroot:
 
 networks:
   auction-net:

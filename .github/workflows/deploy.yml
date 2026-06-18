@@ -67,6 +67,30 @@ jobs:
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             ENVEOF
 
+            # Ensure certbot is installed and SSL certs exist
+            echo "🔒 Setting up SSL certificates..."
+            if ! command -v certbot &> /dev/null; then
+              sudo apt-get update -qq && sudo apt-get install -y -qq certbot > /dev/null 2>&1
+              echo "✅ Certbot installed"
+            fi
+
+            # Obtain SSL cert if not already present
+            if [ ! -f /etc/letsencrypt/live/jagadishvarma.xyz/fullchain.pem ]; then
+              echo "📜 Obtaining SSL certificate from Let's Encrypt..."
+              # Stop nginx temporarily so certbot can use port 80
+              docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true
+              sudo certbot certonly --standalone \
+                -d jagadishvarma.xyz -d www.jagadishvarma.xyz \
+                --non-interactive --agree-tos \
+                --email ${{ secrets.MANAGER_EMAIL }} \
+                --no-eff-email
+              echo "✅ SSL certificate obtained"
+            else
+              echo "✅ SSL certificate already exists"
+              # Try to renew if close to expiry
+              sudo certbot renew --quiet --no-random-sleep-on-renew 2>/dev/null || true
+            fi
+
             # Build and deploy containers
             echo "🏗️ Building and deploying..."
             docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
@@ -74,24 +98,25 @@ jobs:
             # Cleanup
             docker image prune -f
 
-            # Health check (via Nginx since backend port is not exposed to host)
+            # Health check (via Nginx HTTPS)
             echo "🏥 Running health check..."
             sleep 15
             for i in $(seq 1 12); do
-              if curl -sf http://localhost/api/health > /dev/null 2>&1; then
+              if curl -sf -k https://localhost/api/health > /dev/null 2>&1 || curl -sf http://localhost/api/health > /dev/null 2>&1; then
                 echo "✅ Backend is healthy!"
                 break
               fi
               if [ "$i" -eq 12 ]; then
                 echo "❌ Health check failed after 60s"
-                docker compose -f docker-compose.prod.yml logs backend --tail 50
+                docker compose -f docker-compose.prod.yml logs nginx --tail 30
+                docker compose -f docker-compose.prod.yml logs backend --tail 30
                 exit 1
               fi
               echo "⏳ Waiting for backend... ($i/12)"
               sleep 5
             done
 
-            echo "🚀 Deployment complete!"
+            echo "🚀 Deployment complete! Site live at https://jagadishvarma.xyz"
 
       # ── Post-deploy: Invalidate CDN cache if needed ──
       - name: Verify S3 Bucket
