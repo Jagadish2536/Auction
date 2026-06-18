@@ -591,9 +591,9 @@ export default function PlayersPage() {
 
       {/* Photo Enlarge Dialog */}
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
-        <DialogContent className="glass border-gold/10 p-2 overflow-hidden max-w-[95vw] sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw] w-fit bg-navy/95 flex items-center justify-center">
+        <DialogContent className="glass border-gold/10 p-1 overflow-hidden max-w-[95vw] max-h-[95vh] bg-navy/95 flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
           {enlargedPhoto && (
-            <img src={enlargedPhoto} alt="Player Photo" className="max-w-full h-auto max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+            <img src={enlargedPhoto} alt="Player Photo" className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" />
           )}
         </DialogContent>
       </Dialog>
