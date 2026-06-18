@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PublicTournamentData, Tournament, Player, Team } from '@/types';
-import { UPLOAD_BASE } from '@/lib/api';
+import { getImageUrl } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import {
   Trophy, Users, UserCheck, UserX, Radio, LogIn, Eye,
@@ -262,10 +262,10 @@ function HomePageContent() {
                 className="mb-6"
               >
                 <img
-                  src={`${UPLOAD_BASE}${tournament.logo}`}
+                  src={getImageUrl(tournament.logo)}
                   alt={tournament.name}
                   className="w-24 h-24 md:w-32 md:h-32 mx-auto rounded-2xl object-cover glow-gold cursor-pointer hover:scale-105 transition-transform duration-300"
-                  onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${tournament.logo}`)}
+                  onClick={() => setEnlargedPhoto(getImageUrl(tournament.logo))}
                   title="Click to enlarge"
                   onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TOURNAMENT_LOGO; }}
                 />
@@ -464,10 +464,10 @@ function HomePageContent() {
                         <div className="w-14 h-14 rounded-xl bg-navy-lighter flex items-center justify-center overflow-hidden shrink-0">
                           {player.photo ? (
                             <img
-                              src={`${UPLOAD_BASE}${player.photo}`}
+                              src={getImageUrl(player.photo)}
                               alt={player.name}
                               className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                              onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${player.photo}`)}
+                              onClick={() => setEnlargedPhoto(getImageUrl(player.photo))}
                               title="Click to enlarge"
                               onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                             />
@@ -516,10 +516,10 @@ function HomePageContent() {
                     <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-navy-lighter overflow-hidden shrink-0 border border-gold/25 relative group shadow-md flex items-center justify-center">
                       {highestPlayer.photo ? (
                         <img
-                          src={`${UPLOAD_BASE}${highestPlayer.photo}`}
+                          src={getImageUrl(highestPlayer.photo)}
                           alt={highestPlayer.name}
                           className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                          onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${highestPlayer.photo}`)}
+                          onClick={() => setEnlargedPhoto(getImageUrl(highestPlayer.photo))}
                           title="Click to enlarge"
                           onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                         />
@@ -616,10 +616,10 @@ function HomePageContent() {
                                 <div className="w-14 h-14 rounded-xl bg-navy-lighter overflow-hidden shrink-0 border border-gold/10 relative group flex items-center justify-center">
                                   {teamHighestPlayer.photo ? (
                                     <img
-                                      src={`${UPLOAD_BASE}${teamHighestPlayer.photo}`}
+                                      src={getImageUrl(teamHighestPlayer.photo)}
                                       alt={teamHighestPlayer.name}
                                       className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                                      onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${teamHighestPlayer.photo}`)}
+                                      onClick={() => setEnlargedPhoto(getImageUrl(teamHighestPlayer.photo))}
                                       title="Click to enlarge"
                                       onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                                     />
@@ -708,10 +708,10 @@ function HomePageContent() {
                     <div className="w-20 h-20 rounded-2xl bg-navy-lighter/50 border border-gold/10 flex items-center justify-center overflow-hidden p-2 mb-4 shrink-0 shadow-inner">
                       {sponsor.logo ? (
                         <img
-                          src={`${UPLOAD_BASE}${sponsor.logo}`}
+                          src={getImageUrl(sponsor.logo)}
                           alt={sponsor.name}
                           className="max-h-full max-w-full object-contain cursor-pointer hover:scale-105 transition-transform duration-300"
-                          onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${sponsor.logo}`)}
+                          onClick={() => setEnlargedPhoto(getImageUrl(sponsor.logo))}
                           title="Click to enlarge"
                           onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_SPONSOR_LOGO; }}
                         />
@@ -778,10 +778,10 @@ function HomePageContent() {
                             <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
                               {p.photo ? (
                                 <img
-                                  src={`${UPLOAD_BASE}${p.photo}`}
+                                  src={getImageUrl(p.photo)}
                                   alt=""
                                   className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                                  onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${p.photo}`)}
+                                  onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
                                   title="Click to enlarge"
                                   onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                                 />
@@ -851,10 +851,10 @@ function HomePageContent() {
                               <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
                                 {t.logo ? (
                                   <img
-                                    src={`${UPLOAD_BASE}${t.logo}`}
+                                    src={getImageUrl(t.logo)}
                                     alt=""
                                     className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                                    onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${t.logo}`)}
+                                    onClick={() => setEnlargedPhoto(getImageUrl(t.logo))}
                                     title="Click to enlarge"
                                     onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
                                   />

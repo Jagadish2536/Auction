@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import api, { UPLOAD_BASE } from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Tournament, DashboardAnalytics, Player, Team } from '@/types';
 import { Trophy, Users, UserCheck, UserX, TrendingUp, DollarSign, BarChart3, Target, UserCircle, ExternalLink } from 'lucide-react';
@@ -292,7 +292,7 @@ export default function DashboardPage() {
                             <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
                               {p.photo ? (
                                 <img
-                                  src={`${UPLOAD_BASE}${p.photo}`}
+                                  src={getImageUrl(p.photo)}
                                   alt=""
                                   loading="lazy"
                                   decoding="async"
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                               <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
                                 {t.logo ? (
                                   <img
-                                    src={`${UPLOAD_BASE}${t.logo}`}
+                                    src={getImageUrl(t.logo)}
                                     alt=""
                                     loading="lazy"
                                     decoding="async"

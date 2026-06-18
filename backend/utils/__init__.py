@@ -24,8 +24,6 @@ def _get_s3_client():
     s3 = boto3.client(
         's3',
         region_name=current_app.config.get('AWS_REGION', 'ap-south-2'),
-        aws_access_key_id=current_app.config.get('AWS_ACCESS_KEY_ID'),
-        aws_secret_access_key=current_app.config.get('AWS_SECRET_ACCESS_KEY'),
     )
     return s3, bucket
 

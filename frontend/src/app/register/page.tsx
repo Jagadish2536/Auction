@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UPLOAD_BASE } from '@/lib/api';
+import { getImageUrl } from '@/lib/api';
 import { Trophy, CheckCircle, Loader2, ArrowLeft, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { Tournament } from '@/types';
 import { toast } from 'sonner';
@@ -203,7 +203,7 @@ function RegisterFormContent() {
         <div className="text-center space-y-4">
           {tournament.logo ? (
             <img
-              src={`${UPLOAD_BASE}${tournament.logo}`}
+              src={getImageUrl(tournament.logo)}
               alt={tournament.name}
               className="w-20 h-20 mx-auto rounded-2xl object-cover glow-gold-sm border border-gold/10"
             />

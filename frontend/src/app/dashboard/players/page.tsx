@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import api, { UPLOAD_BASE } from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Player, Tournament } from '@/types';
 import { toast } from 'sonner';
@@ -50,7 +50,7 @@ const PlayerRow = memo(function PlayerRow({
           <div className="w-9 h-9 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
             {p.photo ? (
               <img
-                src={`${UPLOAD_BASE}${p.photo}`}
+                src={getImageUrl(p.photo)}
                 alt={p.name}
                 loading="lazy"
                 decoding="async"
@@ -200,7 +200,7 @@ function PendingApprovalsTable({
                   <div className="w-10 h-10 rounded-lg bg-navy-lighter overflow-hidden shrink-0 border border-gold/10">
                     {p.photo ? (
                       <img
-                        src={`${UPLOAD_BASE}${p.photo}`}
+                        src={getImageUrl(p.photo)}
                         alt={p.name}
                         className="w-full h-full object-cover aspect-square"
                         style={{ objectFit: 'cover' }}

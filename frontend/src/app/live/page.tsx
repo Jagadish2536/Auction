@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getSocket } from '@/lib/socket';
-import { UPLOAD_BASE } from '@/lib/api';
+import { getImageUrl } from '@/lib/api';
 import { AuctionFullState, Player, Tournament } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Radio, Trophy, Users, UserCircle, Gavel, Timer, TrendingUp, Home, ArrowLeft, Heart } from 'lucide-react';
@@ -215,7 +215,7 @@ export default function LivePage() {
             <Link href="/" className="flex items-center gap-2 shrink-0">
               {tournament?.logo ? (
                 <img
-                  src={`${UPLOAD_BASE}${tournament.logo}`}
+                  src={getImageUrl(tournament.logo)}
                   alt={tournament.name}
                   className="w-8 h-8 rounded-md object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TOURNAMENT_LOGO; }}
@@ -329,12 +329,12 @@ export default function LivePage() {
                     <div className="w-36 h-36 md:w-48 md:h-48 rounded-2xl bg-navy-lighter overflow-hidden shrink-0">
                       {player.photo ? (
                         <img
-                          src={`${UPLOAD_BASE}${player.photo}`}
+                          src={getImageUrl(player.photo)}
                           alt={player.name}
                           loading="lazy"
                           decoding="async"
                           className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                          onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${player.photo}`)}
+                          onClick={() => setEnlargedPhoto(getImageUrl(player.photo))}
                           title="Click to enlarge"
                           onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                         />
@@ -513,10 +513,10 @@ export default function LivePage() {
                       <div className="w-10 h-10 rounded-full bg-navy-lighter flex items-center justify-center overflow-hidden border border-gold/10 shrink-0">
                         {team.logo ? (
                           <img
-                            src={`${UPLOAD_BASE}${team.logo}`}
+                            src={getImageUrl(team.logo)}
                             alt={team.name}
                             className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                            onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${team.logo}`)}
+                            onClick={() => setEnlargedPhoto(getImageUrl(team.logo))}
                             title="Click to enlarge"
                             onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
                           />
@@ -613,10 +613,10 @@ export default function LivePage() {
                 <div className="w-8 h-8 rounded-full bg-navy-lighter flex items-center justify-center overflow-hidden border border-gold/10 shrink-0">
                   {team.logo ? (
                     <img
-                      src={`${UPLOAD_BASE}${team.logo}`}
+                      src={getImageUrl(team.logo)}
                       alt={team.name}
                       className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                      onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${team.logo}`)}
+                      onClick={() => setEnlargedPhoto(getImageUrl(team.logo))}
                       title="Click to enlarge"
                       onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
                     />
@@ -649,12 +649,12 @@ export default function LivePage() {
                   <div className="w-32 h-20 rounded-xl bg-navy-lighter/50 border border-gold/10 flex items-center justify-center overflow-hidden p-2 mb-4 shrink-0 shadow-inner">
                     {s.logo ? (
                       <img
-                        src={`${UPLOAD_BASE}${s.logo}`}
+                        src={getImageUrl(s.logo)}
                         alt={s.name}
                         loading="lazy"
                         decoding="async"
                         className="max-h-full max-w-full object-contain cursor-pointer hover:scale-105 transition-transform duration-300"
-                        onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${s.logo}`)}
+                        onClick={() => setEnlargedPhoto(getImageUrl(s.logo))}
                         title="Click to enlarge"
                         onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_SPONSOR_LOGO; }}
                       />
@@ -696,12 +696,12 @@ export default function LivePage() {
                   <div className="w-12 h-12 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
                     {p.photo ? (
                       <img
-                        src={`${UPLOAD_BASE}${p.photo}`}
+                        src={getImageUrl(p.photo)}
                         alt={p.name}
                         loading="lazy"
                         decoding="async"
                         className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                        onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${p.photo}`)}
+                        onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
                         title="Click to enlarge"
                         onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                       />
@@ -763,12 +763,12 @@ export default function LivePage() {
               <div className="w-24 h-24 rounded-full bg-navy-lighter flex items-center justify-center overflow-hidden mx-auto border border-gold/10">
                 {selectedSquadPlayer.photo ? (
                   <img
-                    src={`${UPLOAD_BASE}${selectedSquadPlayer.photo}`}
+                    src={getImageUrl(selectedSquadPlayer.photo)}
                     alt={selectedSquadPlayer.name}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                    onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${selectedSquadPlayer.photo}`)}
+                    onClick={() => setEnlargedPhoto(getImageUrl(selectedSquadPlayer.photo))}
                     title="Click to enlarge"
                     onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                   />

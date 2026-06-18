@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import api, { UPLOAD_BASE } from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Team, Tournament } from '@/types';
 import { toast } from 'sonner';
@@ -166,7 +166,7 @@ export default function TeamsPage() {
                     <div className="w-12 h-12 rounded-xl bg-navy-lighter flex items-center justify-center overflow-hidden shrink-0 border border-gold/10 shadow-inner">
                       {t.logo ? (
                         <img
-                          src={`${UPLOAD_BASE}${t.logo}`}
+                          src={getImageUrl(t.logo)}
                           alt=""
                           className="w-full h-full object-contain aspect-square"
                           style={{ objectFit: 'contain' }}

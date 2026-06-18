@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import api, { UPLOAD_BASE } from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { DashboardAnalytics, Tournament, Player, Team } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Users, Trophy, DollarSign, Target, BarChart3, UserCheck, UserX, UserCircle, ExternalLink } from 'lucide-react';
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
                             <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
                               {p.photo ? (
                                 <img
-                                  src={`${UPLOAD_BASE}${p.photo}`}
+                                  src={getImageUrl(p.photo)}
                                   alt=""
                                   className="w-full h-full object-cover"
                                   onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
@@ -324,7 +324,7 @@ export default function AnalyticsPage() {
                               <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
                                 {t.logo ? (
                                   <img
-                                    src={`${UPLOAD_BASE}${t.logo}`}
+                                    src={getImageUrl(t.logo)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                     onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}

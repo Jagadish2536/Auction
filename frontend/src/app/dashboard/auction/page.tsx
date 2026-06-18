@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getSocket } from '@/lib/socket';
-import api, { UPLOAD_BASE } from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { AuctionFullState, Player, Tournament } from '@/types';
 import { toast } from 'sonner';
@@ -326,14 +326,14 @@ export default function AuctionPage() {
                   <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-navy-lighter overflow-hidden shrink-0 mx-auto md:mx-0">
                     {currentPlayer.photo ? (
                       <img
-                        src={`${UPLOAD_BASE}${currentPlayer.photo}`}
+                        src={getImageUrl(currentPlayer.photo)}
                         alt={currentPlayer.name}
                         loading="lazy"
                         decoding="async"
                         width={160}
                         height={160}
                         className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                        onClick={() => setEnlargedPhoto(`${UPLOAD_BASE}${currentPlayer.photo}`)}
+                        onClick={() => setEnlargedPhoto(getImageUrl(currentPlayer.photo))}
                         title="Click to enlarge"
                       />
                     ) : (
@@ -540,7 +540,7 @@ export default function AuctionPage() {
                       >
                         <div className="w-10 h-10 rounded-lg bg-navy-lighter flex items-center justify-center overflow-hidden shrink-0">
                           {player.photo ? (
-                            <img src={`${UPLOAD_BASE}${player.photo}`} alt={player.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                            <img src={getImageUrl(player.photo)} alt={player.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                           ) : (
                             <UserCircle className="w-5 h-5 text-gold/30" />
                           )}

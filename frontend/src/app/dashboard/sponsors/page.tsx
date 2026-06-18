@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import api, { UPLOAD_BASE } from '@/lib/api';
+import api, { getImageUrl } from '@/lib/api';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Heart, ExternalLink, Image as ImageIcon } from 'lucide-react';
 
@@ -121,7 +121,7 @@ export default function SponsorsPage() {
     setName(s.name);
     setDescription(s.description || '');
     setLogoFile(null);
-    setLogoPreview(s.logo ? `${UPLOAD_BASE}${s.logo}` : null);
+    setLogoPreview(s.logo ? getImageUrl(s.logo) : null);
     setOpen(true);
   };
 
@@ -232,7 +232,7 @@ export default function SponsorsPage() {
                 <div className="w-16 h-16 rounded-xl bg-navy-lighter/50 border border-gold/10 flex items-center justify-center overflow-hidden shrink-0 p-1.5">
                   {s.logo ? (
                     <img
-                      src={`${UPLOAD_BASE}${s.logo}`}
+                      src={getImageUrl(s.logo)}
                       alt={s.name}
                       className="w-full h-full object-contain aspect-square"
                       style={{ objectFit: 'contain' }}
