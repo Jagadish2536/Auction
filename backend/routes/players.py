@@ -19,7 +19,9 @@ def extract_url(text):
     match = re.search(r'https?://[^\s]+', text)
     if match:
         return match.group(0)
-    # If no http URL found, return original (might already be clean)
+    # If no http URL found, check if it looks like a bare domain (e.g. chshare.link/player/xxx)
+    if '.' in text and ' ' not in text:
+        return f'https://{text}'
     return text
 
 

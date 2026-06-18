@@ -15,7 +15,7 @@ import { getSocket } from '@/lib/socket';
 import {
   Trophy, Users, UserCheck, UserX, Radio, LogIn, Eye,
   MapPin, Calendar, Timer, TrendingUp, Gavel,
-  Phone, Mail, ArrowLeft, ShieldAlert, UserCircle, ExternalLink, Heart
+  Phone, Mail, ArrowLeft, ShieldAlert, UserCircle, ExternalLink, Heart, Search
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/lib/store';
@@ -32,6 +32,14 @@ const DEFAULT_TEAM_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org
 const DEFAULT_TOURNAMENT_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 15L20 30v25c0 20 18 35 30 40 12-5 30-20 30-40V30L50 15z' fill='%23d4a843' fill-opacity='0.2' stroke='%23d4a843' stroke-width='3'/><circle cx='50' cy='50' r='12' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_SPONSOR_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 30c-5-5-15-5-20 0s-5 15 0 20l20 20 20-20c5-5 5-15 0-20s-15-5-20 0z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 
+/** Ensure CricHeroes URL has a proper protocol prefix so it opens as external link */
+function ensureUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  return `https://${trimmed}`;
+}
+
 function HomePageContent() {
   const { user, checkAuth, isAuthenticated } = useAuthStore();
   const [mounted, setMounted] = useState(false);
@@ -45,6 +53,7 @@ function HomePageContent() {
   const [pubPlayers, setPubPlayers] = useState<Player[]>([]);
   const [pubTeams, setPubTeams] = useState<Team[]>([]);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
+  const [pubSearchQuery, setPubSearchQuery] = useState('');
 
   const openPublicModal = (type: 'teams' | 'total' | 'sold' | 'unsold') => {
     if (!selectedTid) return;
@@ -63,12 +72,24 @@ function HomePageContent() {
   };
 
   const getPubFilteredPlayers = (): Player[] => {
+    let list: Player[] = [];
     switch (pubModalType) {
-      case 'total': return pubPlayers;
-      case 'sold': return pubPlayers.filter(p => p.status === 'sold');
-      case 'unsold': return pubPlayers.filter(p => p.status === 'unsold');
-      default: return [];
+      case 'total': list = pubPlayers; break;
+      case 'sold': list = pubPlayers.filter(p => p.status === 'sold'); break;
+      case 'unsold': list = pubPlayers.filter(p => p.status === 'unsold'); break;
+      default: list = [];
     }
+    // Apply search filter
+    if (pubSearchQuery.trim()) {
+      const q = pubSearchQuery.toLowerCase().trim();
+      list = list.filter(p =>
+        p.name?.toLowerCase().includes(q) ||
+        p.village?.toLowerCase().includes(q) ||
+        p.playing_style?.toLowerCase().includes(q) ||
+        p.mobile?.includes(q)
+      );
+    }
+    return list;
   };
 
   const pubModalTitle = (): string => {
@@ -538,7 +559,7 @@ function HomePageContent() {
                           <h3 className="text-2xl font-bold text-foreground">{highestPlayer.name}</h3>
                           {highestPlayer.crickheroes_url && (
                             <a
-                              href={highestPlayer.crickheroes_url}
+                              href={ensureUrl(highestPlayer.crickheroes_url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-gold hover:text-gold-light p-1 bg-gold/10 hover:bg-gold/20 rounded-full transition-all"
@@ -632,7 +653,7 @@ function HomePageContent() {
                                     <h4 className="font-bold text-foreground text-sm truncate">{teamHighestPlayer.name}</h4>
                                     {teamHighestPlayer.crickheroes_url && (
                                       <a
-                                        href={teamHighestPlayer.crickheroes_url}
+                                        href={ensureUrl(teamHighestPlayer.crickheroes_url)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-gold hover:text-gold-light shrink-0"
@@ -747,7 +768,7 @@ function HomePageContent() {
         </footer>
 
         {/* Player Detail Modal */}
-        <Dialog open={pubModalType !== null && pubModalType !== 'teams'} onOpenChange={(o) => { if (!o) setPubModalType(null); }}>
+        <Dialog open={pubModalType !== null && pubModalType !== 'teams'} onOpenChange={(o) => { if (!o) { setPubModalType(null); setPubSearchQuery(''); } }}>
           <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full">
             <DialogHeader>
               <DialogTitle className="text-gradient-gold flex items-center gap-2">
@@ -757,6 +778,17 @@ function HomePageContent() {
                 {pubModalTitle()} ({getPubFilteredPlayers().length})
               </DialogTitle>
             </DialogHeader>
+            {/* Search Field */}
+            <div className="relative mt-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by name, village, style, or phone..."
+                value={pubSearchQuery}
+                onChange={(e) => setPubSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-navy-lighter/50 border border-gold/10 rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/30 focus:ring-1 focus:ring-gold/20 transition-all"
+              />
+            </div>
             <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
               {getPubFilteredPlayers().length > 0 ? (
                 <Table className="min-w-[650px] w-full">
@@ -792,7 +824,7 @@ function HomePageContent() {
                             <div>
                               <div className="flex items-center gap-1">
                                 <span className="font-medium text-foreground text-sm">{p.name}</span>
-                                {p.crickheroes_url && <a href={p.crickheroes_url} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light"><ExternalLink className="w-3 h-3" /></a>}
+                                {p.crickheroes_url && <a href={ensureUrl(p.crickheroes_url)} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light"><ExternalLink className="w-3 h-3" /></a>}
                               </div>
                               {p.age && <span className="text-xs text-muted-foreground">Age: {p.age}</span>}
                             </div>

@@ -8,13 +8,21 @@ import { getSocket } from '@/lib/socket';
 import { getImageUrl } from '@/lib/api';
 import { AuctionFullState, Player, Tournament } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Radio, Trophy, Users, UserCircle, Gavel, Timer, TrendingUp, Home, ArrowLeft, Heart } from 'lucide-react';
+import { Radio, Trophy, Users, UserCircle, Gavel, Timer, TrendingUp, Home, ArrowLeft, Heart, Search } from 'lucide-react';
 import Link from 'next/link';
 
 const DEFAULT_PLAYER_PHOTO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><circle cx='50' cy='40' r='18' fill='%23d4a843' fill-opacity='0.8'/><path d='M20 80c0-15 12-25 30-25s30 10 30 25z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_TEAM_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M35 30h30v20c0 10-8 18-15 18s-15-8-15-18V30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M45 68h10v12H45zM30 80h40v4H30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M28 35h7v10h-7zm37 0h7v10h-7z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_TOURNAMENT_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 15L20 30v25c0 20 18 35 30 40 12-5 30-20 30-40V30L50 15z' fill='%23d4a843' fill-opacity='0.2' stroke='%23d4a843' stroke-width='3'/><circle cx='50' cy='50' r='12' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_SPONSOR_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 30c-5-5-15-5-20 0s-5 15 0 20l20 20 20-20c5-5 5-15 0-20s-15-5-20 0z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
+
+/** Ensure CricHeroes URL has a proper protocol prefix so it opens as external link */
+function ensureUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  return `https://${trimmed}`;
+}
 
 export default function LivePage() {
   const [state, setState] = useState<AuctionFullState | null>(null);
@@ -29,6 +37,7 @@ export default function LivePage() {
   const [activeFilter, setActiveFilter] = useState<'total' | 'sold' | 'unsold' | 'left' | null>(null);
   const [selectedSquadPlayer, setSelectedSquadPlayer] = useState<Player | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [viewerCount, setViewerCount] = useState<number>(1);
   const isAudioEnabledRef = useRef(isAudioEnabled);
@@ -198,11 +207,25 @@ export default function LivePage() {
 
   // Filter players for stats modals
   const filteredPlayers = players.filter((p) => {
-    if (activeFilter === 'total') return true;
-    if (activeFilter === 'sold') return p.status === 'sold';
-    if (activeFilter === 'unsold') return p.status === 'unsold';
-    if (activeFilter === 'left') return p.status === 'available';
-    return false;
+    // Status filter
+    let statusMatch = false;
+    if (activeFilter === 'total') statusMatch = true;
+    else if (activeFilter === 'sold') statusMatch = p.status === 'sold';
+    else if (activeFilter === 'unsold') statusMatch = p.status === 'unsold';
+    else if (activeFilter === 'left') statusMatch = p.status === 'available';
+    if (!statusMatch) return false;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      return (
+        p.name?.toLowerCase().includes(q) ||
+        p.village?.toLowerCase().includes(q) ||
+        p.playing_style?.toLowerCase().includes(q) ||
+        p.mobile?.includes(q)
+      );
+    }
+    return true;
   });
 
   return (
@@ -350,7 +373,7 @@ export default function LivePage() {
                         <Badge variant="outline" className="border-gold/20 text-gold">{player.playing_style}</Badge>
                         {player.crickheroes_url && (
                           <a
-                            href={player.crickheroes_url}
+                            href={ensureUrl(player.crickheroes_url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs bg-navy-lighter hover:bg-navy-lighter/80 text-gold font-semibold py-1 px-3 rounded-full border border-gold/20 transition-colors shadow-sm"
@@ -682,13 +705,24 @@ export default function LivePage() {
       </main>
 
       {/* Stats Detail Dialog */}
-      <Dialog open={activeFilter !== null} onOpenChange={(open) => { if (!open) setActiveFilter(null); }}>
+      <Dialog open={activeFilter !== null} onOpenChange={(open) => { if (!open) { setActiveFilter(null); setSearchQuery(''); } }}>
         <DialogContent className="max-w-[95vw] sm:max-w-[85vw] md:max-w-2xl w-full bg-navy border border-gold/10 text-foreground">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gradient-gold capitalize">
               {activeFilter === 'left' ? 'Remaining' : activeFilter} Players ({filteredPlayers.length})
             </DialogTitle>
           </DialogHeader>
+          {/* Search Field */}
+          <div className="relative mt-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search by name, village, style, or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-navy-lighter/50 border border-gold/10 rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/30 focus:ring-1 focus:ring-gold/20 transition-all"
+            />
+          </div>
           <ScrollArea className="max-h-[60vh] pr-4 mt-4">
             <div className="space-y-3">
               {filteredPlayers.map((p) => (
@@ -715,10 +749,18 @@ export default function LivePage() {
                       className="text-sm font-semibold text-foreground hover:text-gold transition-colors truncate text-left flex items-center gap-1.5 cursor-pointer"
                     >
                       {p.name}
-                      {p.crickheroes_url && (
-                        <span className="text-[10px] text-gold font-normal border border-gold/20 px-1 rounded-sm">Profile</span>
-                      )}
                     </button>
+                    {p.crickheroes_url && (
+                      <a
+                        href={ensureUrl(p.crickheroes_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[10px] text-gold font-normal border border-gold/20 px-1.5 py-0.5 rounded-sm hover:bg-gold/10 transition-colors shrink-0"
+                      >
+                        Profile ↗
+                      </a>
+                    )}
                     <p className="text-xs text-muted-foreground">{p.village} | {p.playing_style}</p>
                   </div>
                   <div className="text-right shrink-0">
@@ -798,7 +840,7 @@ export default function LivePage() {
               </div>
               {selectedSquadPlayer.crickheroes_url && (
                 <a
-                  href={selectedSquadPlayer.crickheroes_url}
+                  href={ensureUrl(selectedSquadPlayer.crickheroes_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark text-navy font-bold py-2 px-4 rounded-lg transition-colors text-sm shadow-md cursor-pointer"

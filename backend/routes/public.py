@@ -186,6 +186,9 @@ def register_player_public(tournament_id):
         url_match = re.search(r'https?://[^\s]+', crickheroes_url)
         if url_match:
             crickheroes_url = url_match.group(0)
+        elif '.' in crickheroes_url.strip() and ' ' not in crickheroes_url.strip():
+            # Bare domain without protocol (e.g. chshare.link/player/xxx)
+            crickheroes_url = f'https://{crickheroes_url.strip()}'
 
     # Create new Player
     player = Player(

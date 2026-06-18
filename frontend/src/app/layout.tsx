@@ -20,7 +20,9 @@ export const metadata: Metadata = {
     "Experience the thrill of live cricket player auctions. Real-time bidding, team management, and tournament analytics for local cricket tournaments.",
   keywords: "cricket, auction, IPL, tournament, live bidding, player auction, Lakshya Sports",
   icons: {
-    icon: "/icons/icon-192x192.png",
+    icon: [
+      { url: "/icons/icon-192x192.png", type: "image/png", sizes: "192x192" },
+    ],
     apple: "/icons/apple-touch-icon.png",
   },
   manifest: "/manifest.json",

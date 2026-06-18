@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lakshya-sports-v2';
+const CACHE_NAME = 'lakshya-sports-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/login',

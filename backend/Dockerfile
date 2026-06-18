@@ -35,13 +35,17 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Run with Gunicorn + Eventlet (single worker required for Socket.IO)
+# Run with Gunicorn + Eventlet (single worker required for Socket.IO shared state)
+# eventlet uses green threads — 1 worker handles 1000+ concurrent connections
 CMD ["gunicorn", \
      "--worker-class", "eventlet", \
      "--workers", "1", \
+     "--worker-connections", "1000", \
      "--bind", "0.0.0.0:5000", \
      "--timeout", "120", \
      "--keep-alive", "65", \
+     "--graceful-timeout", "30", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
+     "--log-level", "warning", \
      "app:app"]
