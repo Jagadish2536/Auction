@@ -1,22 +1,62 @@
 {
-  "name": "JV Cricket Auction Platform",
-  "short_name": "JV Auction",
-  "description": "Live real-time cricket player auctions for local cricket tournaments.",
+  "name": "Lakshya Sports - Cricket Auction Platform",
+  "short_name": "Lakshya Sports",
+  "description": "Live real-time cricket player auctions. Real-time bidding, team management, and tournament analytics for local cricket tournaments.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a1628",
   "theme_color": "#d4a843",
   "orientation": "portrait-primary",
+  "categories": ["sports", "entertainment"],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Live Auction",
+      "short_name": "Live",
+      "url": "/live",
+      "description": "Watch the live auction",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Manage your tournament",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -51,17 +51,6 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            # ⚠️ ONE-TIME: Clear test data from production DB
-            echo "🗑️ Clearing test data from database..."
-            docker compose -f docker-compose.prod.yml exec -T postgres psql -U auction -d auction -c "
-              DELETE FROM bids;
-              DELETE FROM players;
-              DELETE FROM teams;
-              DELETE FROM sponsors;
-              DELETE FROM tournaments;
-              SELECT 'Database cleared successfully' AS status;
-            " || echo "⚠️ DB clear skipped (containers may not be running yet)"
-
             # Write production .env
             echo "🔧 Writing production environment..."
             cat > .env <<'ENVEOF'
