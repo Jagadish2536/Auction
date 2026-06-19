@@ -122,12 +122,18 @@ function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
     if (!el) return;
     setContainerHeight(el.clientHeight);
     const onScroll = () => setScrollTop(el.scrollTop);
-    const onResize = () => setContainerHeight(el.clientHeight);
     el.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerHeight(entry.target.clientHeight);
+      }
+    });
+    resizeObserver.observe(el);
+
     return () => {
       el.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -138,7 +144,14 @@ function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
   const offsetY = startIndex * VIRTUAL_ROW_HEIGHT;
 
   return (
-    <div ref={containerRef} className="overflow-auto" style={{ maxHeight: '70vh' }}>
+    <div
+      ref={containerRef}
+      className="overflow-auto overscroll-contain"
+      style={{
+        maxHeight: '70vh',
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
       <table className="w-full min-w-[500px] text-sm">
         <thead className="sticky top-0 z-10 bg-navy-lighter/80 backdrop-blur-sm">
           <tr className="border-b border-border/30">

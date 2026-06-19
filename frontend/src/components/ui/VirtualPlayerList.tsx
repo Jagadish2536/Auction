@@ -44,16 +44,18 @@ function VirtualPlayerListInner<T>({
       setScrollTop(el.scrollTop);
     };
 
-    const onResize = () => {
-      setContainerHeight(el.clientHeight);
-    };
-
     el.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerHeight(entry.target.clientHeight);
+      }
+    });
+    resizeObserver.observe(el);
 
     return () => {
       el.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -91,8 +93,11 @@ function VirtualPlayerListInner<T>({
   return (
     <div
       ref={containerRef}
-      className={`overflow-auto ${className}`}
-      style={{ maxHeight }}
+      className={`overflow-auto overscroll-contain ${className}`}
+      style={{
+        maxHeight,
+        WebkitOverflowScrolling: 'touch',
+      }}
     >
       {/* Top spacer */}
       {offsetY > 0 && <div style={{ height: offsetY }} />}
