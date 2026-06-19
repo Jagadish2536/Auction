@@ -258,7 +258,7 @@ export default function DashboardPage() {
           <VirtualPlayerList<Player>
             items={getFilteredPlayers}
             rowHeight={56}
-            maxHeight="100%"
+            maxHeight="60vh"
             keyExtractor={(p) => p.id}
             emptyMessage="No players in this category"
             emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
@@ -311,7 +311,7 @@ export default function DashboardPage() {
           <VirtualPlayerList<Team>
             items={teams}
             rowHeight={56}
-            maxHeight="100%"
+            maxHeight="60vh"
             keyExtractor={(t) => t.id}
             emptyMessage="No teams created yet"
             emptyIcon={<Trophy className="w-12 h-12 text-gold/20 mx-auto" />}

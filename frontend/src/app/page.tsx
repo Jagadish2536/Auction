@@ -822,7 +822,7 @@ function HomePageContent() {
                 <VirtualPlayerList<Player>
                   items={getPubFilteredPlayers()}
                   rowHeight={80}
-                  maxHeight="100%"
+                  maxHeight="60vh"
                   keyExtractor={(p) => p.id}
                   emptyMessage="No players in this category"
                   emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
