@@ -1,94 +1,54 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import api, { getImageUrl } from '@/lib/api';
-import { getSocket } from '@/lib/socket';
 import { Tournament, DashboardAnalytics, Player, Team } from '@/types';
 import { Trophy, Users, UserCheck, UserX, TrendingUp, DollarSign, BarChart3, Target, UserCircle, ExternalLink } from 'lucide-react';
+import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
+import VirtualPlayerList from '@/components/ui/VirtualPlayerList';
+import { useAnalytics, usePlayers, useTeams, useTournament, useSocketInvalidation } from '@/lib/queries';
 
 type ModalType = 'total' | 'sold' | 'unsold' | 'available' | 'teams' | null;
 
-const DEFAULT_PLAYER_PHOTO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><circle cx='50' cy='40' r='18' fill='%23d4a843' fill-opacity='0.8'/><path d='M20 80c0-15 12-25 30-25s30 10 30 25z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_TEAM_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M35 30h30v20c0 10-8 18-15 18s-15-8-15-18V30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M45 68h10v12H45zM30 80h40v4H30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M28 35h7v10h-7zm37 0h7v10h-7z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 
 export default function DashboardPage() {
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [activeTournament, setActiveTournament] = useState<Tournament | null>(null);
   const [modalType, setModalType] = useState<ModalType>(null);
-  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
 
-  const loadAnalytics = (tid: number) => {
-    api.get(`/analytics/dashboard/${tid}`).then((r) => setAnalytics(r.data)).catch(() => {});
-  };
+  // Resolve tournament ID
+  const [tournamentId, setTournamentId] = useState<number | null>(null);
 
   useEffect(() => {
     const selectedId = localStorage.getItem('selected_tournament_id');
     if (selectedId) {
-      const tid = Number(selectedId);
-      api.get(`/tournaments/${tid}`).then((res) => {
-        setActiveTournament(res.data.tournament);
-        loadAnalytics(tid);
-      }).catch(() => {});
+      setTournamentId(Number(selectedId));
     } else {
       api.get('/tournaments').then((res) => {
         const t = res.data.tournaments;
-        if (t.length > 0) {
-          setActiveTournament(t[0]);
-          loadAnalytics(t[0].id);
-        }
+        if (t.length > 0) setTournamentId(t[0].id);
       }).catch(() => {});
     }
   }, []);
 
-  useEffect(() => {
-    if (!activeTournament) return;
-    const socket = getSocket();
+  // React Query hooks — cached, deduplicated, auto-invalidated
+  const { data: activeTournament } = useTournament(tournamentId);
+  const { data: analytics } = useAnalytics(tournamentId);
+  const { data: allPlayers = [] } = usePlayers(tournamentId);
+  const { data: teams = [] } = useTeams(tournamentId);
 
-    const handleUpdate = () => {
-      loadAnalytics(activeTournament.id);
-      if (modalType === 'teams') {
-        api.get(`/tournaments/${activeTournament.id}/teams`).then((r) => setTeams(r.data.teams || [])).catch(() => {});
-      } else if (modalType) {
-        api.get(`/tournaments/${activeTournament.id}/players`).then((r) => setAllPlayers(r.data.players || [])).catch(() => {});
-      }
-    };
+  // Socket-driven cache invalidation
+  useSocketInvalidation(tournamentId);
 
-    socket.on('player:change', handleUpdate);
-    socket.on('team:change', handleUpdate);
-    socket.on('tournament:change', handleUpdate);
+  const openModal = useCallback((type: ModalType) => {
+    setModalType(type);
+  }, []);
 
-    return () => {
-      socket.off('player:change', handleUpdate);
-      socket.off('team:change', handleUpdate);
-      socket.off('tournament:change', handleUpdate);
-    };
-  }, [activeTournament, modalType]);
-
-  const openModal = (type: ModalType) => {
-    if (!activeTournament) return;
-    const tid = activeTournament.id;
-
-    if (type === 'teams') {
-      api.get(`/tournaments/${tid}/teams`).then((r) => {
-        setTeams(r.data.teams || []);
-        setModalType(type);
-      }).catch(() => {});
-    } else {
-      api.get(`/tournaments/${tid}/players`).then((r) => {
-        setAllPlayers(r.data.players || []);
-        setModalType(type);
-      }).catch(() => {});
-    }
-  };
-
-  const getFilteredPlayers = (): Player[] => {
+  const getFilteredPlayers = useMemo((): Player[] => {
     switch (modalType) {
       case 'total': return allPlayers;
       case 'sold': return allPlayers.filter(p => p.status === 'sold');
@@ -96,7 +56,7 @@ export default function DashboardPage() {
       case 'available': return allPlayers.filter(p => p.status === 'available');
       default: return [];
     }
-  };
+  }, [allPlayers, modalType]);
 
   const getModalTitle = (): string => {
     switch (modalType) {
@@ -267,81 +227,50 @@ export default function DashboardPage() {
               {modalType === 'unsold' && <UserX className="w-5 h-5 text-red-400" />}
               {modalType === 'available' && <Target className="w-5 h-5 text-gold" />}
               {modalType === 'total' && <Users className="w-5 h-5 text-blue-400" />}
-              {getModalTitle()} ({getFilteredPlayers().length})
+              {getModalTitle()} ({getFilteredPlayers.length})
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            {getFilteredPlayers().length > 0 ? (
-              <div className="w-full overflow-x-auto">
-                <Table className="min-w-[650px]">
-                  <TableHeader>
-                    <TableRow className="border-border/30">
-                      <TableHead>Player</TableHead>
-                      <TableHead>Village</TableHead>
-                      <TableHead>Style</TableHead>
-                      <TableHead>Base Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      {(modalType === 'sold' || modalType === 'total') && <TableHead>Sold To</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getFilteredPlayers().map((p) => (
-                      <TableRow key={p.id} className="border-border/20 hover:bg-navy-lighter/30">
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
-                              {p.photo ? (
-                                <img
-                                  src={getImageUrl(p.photo)}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
-                                />
-                              ) : (
-                                <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <span className="font-medium text-foreground text-sm">{p.name}</span>
-                                {p.crickheroes_url && <a href={p.crickheroes_url} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light"><ExternalLink className="w-3 h-3" /></a>}
-                              </div>
-                              {p.age && <span className="text-xs text-muted-foreground">Age: {p.age}</span>}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{p.village || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs border-gold/20 text-gold">{p.playing_style || '-'}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">₹{p.base_price.toLocaleString('en-IN')}</TableCell>
-                        <TableCell>
-                          <Badge className={`text-xs ${statusColors[p.status]}`}>{p.status}</Badge>
-                        </TableCell>
-                        {(modalType === 'sold' || modalType === 'total') && (
-                          <TableCell className="text-sm">
-                            {p.sold_team_name ? (
-                              <div>
-                                <span className="text-green-400 font-medium">{p.sold_team_name}</span>
-                                <span className="text-muted-foreground ml-1.5">₹{p.sold_price?.toLocaleString('en-IN')}</span>
-                              </div>
-                            ) : '-'}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="p-10 text-center">
-                <UserCircle className="w-12 h-12 text-gold/20 mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No players in this category</p>
+          <VirtualPlayerList<Player>
+            items={getFilteredPlayers}
+            rowHeight={56}
+            maxHeight="60vh"
+            keyExtractor={(p) => p.id}
+            emptyMessage="No players in this category"
+            emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
+            renderRow={(p) => (
+              <div className="flex items-center w-full px-4 py-2 border-b border-border/20 hover:bg-navy-lighter/30">
+                <div className="flex items-center gap-2.5 min-w-[180px]">
+                  <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
+                    <OptimizedImage
+                      src={p.photo ? getImageUrl(p.photo) : null}
+                      alt={p.name}
+                      width={32}
+                      height={32}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-foreground text-sm">{p.name}</span>
+                      {p.crickheroes_url && <a href={p.crickheroes_url} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light"><ExternalLink className="w-3 h-3" /></a>}
+                    </div>
+                    {p.age && <span className="text-xs text-muted-foreground">Age: {p.age}</span>}
+                  </div>
+                </div>
+                <span className="hidden md:block text-sm text-muted-foreground min-w-[100px]">{p.village || '-'}</span>
+                <span className="hidden md:block min-w-[100px]"><Badge variant="outline" className="text-xs border-gold/20 text-gold">{p.playing_style || '-'}</Badge></span>
+                <span className="text-sm min-w-[80px]">₹{p.base_price.toLocaleString('en-IN')}</span>
+                <span className="min-w-[80px]"><Badge className={`text-xs ${statusColors[p.status]}`}>{p.status}</Badge></span>
+                {(modalType === 'sold' || modalType === 'total') && (
+                  <span className="text-sm min-w-[120px]">
+                    {p.sold_team_name ? (
+                      <span><span className="text-green-400 font-medium">{p.sold_team_name}</span> <span className="text-muted-foreground">₹{p.sold_price?.toLocaleString('en-IN')}</span></span>
+                    ) : '-'}
+                  </span>
+                )}
               </div>
             )}
-          </ScrollArea>
+          />
         </DialogContent>
       </Dialog>
 
@@ -354,67 +283,43 @@ export default function DashboardPage() {
               All Teams ({teams.length})
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            {teams.length > 0 ? (
-              <div className="w-full overflow-x-auto">
-                <Table className="min-w-[650px]">
-                  <TableHeader>
-                    <TableRow className="border-border/30">
-                      <TableHead>Team</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Players</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Remaining</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teams.map((t) => {
-                      const spentPct = t.budget > 0 ? ((t.budget - t.remaining_budget) / t.budget) * 100 : 0;
-                      return (
-                        <TableRow key={t.id} className="border-border/20 hover:bg-navy-lighter/30">
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
-                                {t.logo ? (
-                                  <img
-                                    src={getImageUrl(t.logo)}
-                                    alt=""
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
-                                  />
-                                ) : (
-                                  <img src={DEFAULT_TEAM_LOGO} alt="" className="w-full h-full object-cover" />
-                                )}
-                              </div>
-                              <span className="font-medium text-foreground text-sm">{t.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{t.owner_name || '-'}</TableCell>
-                          <TableCell className="text-sm">{t.player_count} / {t.max_players}</TableCell>
-                          <TableCell className="text-sm">₹{t.budget.toLocaleString('en-IN')}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <span className="text-sm text-green-400 font-medium">₹{t.remaining_budget.toLocaleString('en-IN')}</span>
-                              <div className="h-1.5 w-20 bg-navy-lighter rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full transition-all" style={{ width: `${spentPct}%` }} />
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="p-10 text-center">
-                <Trophy className="w-12 h-12 text-gold/20 mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No teams created yet</p>
-              </div>
-            )}
-          </ScrollArea>
+          <VirtualPlayerList<Team>
+            items={teams}
+            rowHeight={56}
+            maxHeight="60vh"
+            keyExtractor={(t) => t.id}
+            emptyMessage="No teams created yet"
+            emptyIcon={<Trophy className="w-12 h-12 text-gold/20 mx-auto" />}
+            renderRow={(t) => {
+              const spentPct = t.budget > 0 ? ((t.budget - t.remaining_budget) / t.budget) * 100 : 0;
+              return (
+                <div className="flex items-center w-full px-4 py-2 border-b border-border/20 hover:bg-navy-lighter/30">
+                  <div className="flex items-center gap-2.5 min-w-[180px]">
+                    <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
+                      <OptimizedImage
+                        src={t.logo ? getImageUrl(t.logo) : null}
+                        alt={t.name}
+                        width={32}
+                        height={32}
+                        fallback={DEFAULT_TEAM_LOGO}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="font-medium text-foreground text-sm">{t.name}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground min-w-[100px]">{t.owner_name || '-'}</span>
+                  <span className="text-sm min-w-[80px]">{t.player_count} / {t.max_players}</span>
+                  <span className="text-sm min-w-[100px]">₹{t.budget.toLocaleString('en-IN')}</span>
+                  <div className="min-w-[120px]">
+                    <span className="text-sm text-green-400 font-medium">₹{t.remaining_budget.toLocaleString('en-IN')}</span>
+                    <div className="h-1.5 w-20 bg-navy-lighter rounded-full overflow-hidden mt-1">
+                      <div className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full transition-all" style={{ width: `${spentPct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

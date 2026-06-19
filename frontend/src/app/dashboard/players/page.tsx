@@ -10,12 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import api, { getImageUrl } from '@/lib/api';
-import { getSocket } from '@/lib/socket';
 import { Player, Tournament } from '@/types';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Upload, UserCircle, Search, ExternalLink, Link as LinkIcon, Copy, Check, RefreshCw } from 'lucide-react';
-
-const DEFAULT_PLAYER_PHOTO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><circle cx='50' cy='40' r='18' fill='%23d4a843' fill-opacity='0.8'/><path d='M20 80c0-15 12-25 30-25s30 10 30 25z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
+import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
+import { usePlayers, usePendingPlayers, useTournament, useSocketInvalidation } from '@/lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries';
 
 const statusColors: Record<string, string> = {
   available: 'bg-blue-500/20 text-blue-400',
@@ -56,23 +57,15 @@ const PlayerRow = memo(function PlayerRow({
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
-            {p.photo ? (
-              <img
-                src={getImageUrl(p.photo)}
-                alt={p.name}
-                loading="lazy"
-                decoding="async"
-                width={36}
-                height={36}
-                className="w-full h-full object-cover aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
-                style={{ objectFit: 'cover' }}
-                onClick={() => onEnlarge(getImageUrl(p.photo))}
-                title="Click to enlarge"
-                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
-              />
-            ) : (
-              <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover aspect-square" style={{ objectFit: 'cover' }} />
-            )}
+            <OptimizedImage
+              src={p.photo ? getImageUrl(p.photo) : null}
+              alt={p.name}
+              width={36}
+              height={36}
+              className="w-full h-full object-cover aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
+              onClick={() => onEnlarge(getImageUrl(p.photo))}
+              title="Click to enlarge"
+            />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
@@ -211,19 +204,15 @@ function PendingApprovalsTable({
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-navy-lighter overflow-hidden shrink-0 border border-gold/10">
-                    {p.photo ? (
-                      <img
-                        src={getImageUrl(p.photo)}
-                        alt={p.name}
-                        className="w-full h-full object-cover aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
-                        style={{ objectFit: 'cover' }}
-                        onClick={() => onEnlarge(getImageUrl(p.photo))}
-                        title="Click to enlarge"
-                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
-                      />
-                    ) : (
-                      <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover aspect-square" style={{ objectFit: 'cover' }} />
-                    )}
+                    <OptimizedImage
+                      src={p.photo ? getImageUrl(p.photo) : null}
+                      alt={p.name}
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
+                      onClick={() => onEnlarge(getImageUrl(p.photo))}
+                      title="Click to enlarge"
+                    />
                   </div>
                   <span className="font-semibold text-foreground text-sm">{p.name}</span>
                 </div>
@@ -279,9 +268,30 @@ function PendingApprovalsTable({
 }
 
 export default function PlayersPage() {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tournament, setTournament] = useState<Tournament | null>(null);
+  // Resolve tournament ID from localStorage
+  const [tournamentId, setTournamentId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const selectedId = localStorage.getItem('selected_tournament_id');
+    if (selectedId) {
+      setTournamentId(Number(selectedId));
+    } else {
+      api.get('/tournaments').then((r) => {
+        const t = r.data.tournaments;
+        if (t.length > 0) setTournamentId(t[0].id);
+      }).catch(() => {});
+    }
+  }, []);
+
+  // React Query hooks — cached, deduplicated, socket-invalidated
+  const { data: tournament, refetch: refetchTournament } = useTournament(tournamentId);
+  const { data: players = [], isLoading: loading, refetch: refetchPlayers } = usePlayers(tournamentId);
+  const { data: pendingPlayers = [], refetch: refetchPending } = usePendingPlayers(tournamentId);
+
+  // Socket-driven cache invalidation
+  useSocketInvalidation(tournamentId);
+
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
@@ -308,33 +318,25 @@ export default function PlayersPage() {
     if (!tournament) return;
     const newStatus = !tournament.registration_open;
     try {
-      const res = await api.put(`/tournaments/${tournament.id}`, { registration_open: newStatus });
-      setTournament(res.data.tournament);
+      await api.put(`/tournaments/${tournament.id}`, { registration_open: newStatus });
+      refetchTournament();
       toast.success(newStatus ? 'Registration Link Activated!' : 'Registration Link Expired!');
     } catch {
       toast.error('Failed to update registration status');
     }
   };
 
-  const [pendingPlayers, setPendingPlayers] = useState<Player[]>([]);
-
-  const loadPlayers = useCallback((tid: number) => {
-    api.get(`/tournaments/${tid}/players`).then((r) => {
-      setPlayers(r.data.players);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-
-    api.get(`/tournaments/${tid}/players?status=pending`).then((r) => {
-      setPendingPlayers(r.data.players || []);
-    }).catch(() => {});
-  }, []);
+  const refreshAll = useCallback(() => {
+    refetchPlayers();
+    refetchPending();
+  }, [refetchPlayers, refetchPending]);
 
   const handleApprove = async (id: number) => {
     if (!tournament) return;
     try {
       await api.put(`/tournaments/${tournament.id}/players/${id}`, { status: 'available' });
       toast.success('Player approved successfully');
-      loadPlayers(tournament.id);
+      refreshAll();
     } catch {
       toast.error('Failed to approve player');
     }
@@ -345,7 +347,7 @@ export default function PlayersPage() {
     try {
       await api.delete(`/tournaments/${tournament.id}/players/${id}`);
       toast.success('Registration rejected');
-      loadPlayers(tournament.id);
+      refreshAll();
     } catch {
       toast.error('Failed to reject registration');
     }
@@ -353,26 +355,7 @@ export default function PlayersPage() {
 
 
 
-  useEffect(() => {
-    const selectedId = localStorage.getItem('selected_tournament_id');
-    if (selectedId) {
-      const tid = Number(selectedId);
-      api.get(`/tournaments/${tid}`).then((res) => {
-        setTournament(res.data.tournament);
-        loadPlayers(tid);
-      }).catch(() => setLoading(false));
-    } else {
-      api.get('/tournaments').then((r) => {
-        const t = r.data.tournaments;
-        if (t.length > 0) {
-          setTournament(t[0]);
-          loadPlayers(t[0].id);
-        } else {
-          setLoading(false);
-        }
-      }).catch(() => setLoading(false));
-    }
-  }, [loadPlayers]);
+  // (tournament loading handled by React Query hooks above)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,7 +384,7 @@ export default function PlayersPage() {
       setEditing(null);
       setForm({ name: '', village: '', mobile: '', playing_style: '', age: '', crickheroes_url: '' });
       setPhoto(null);
-      loadPlayers(tournament.id);
+      refreshAll();
     } catch { toast.error('Failed'); }
   };
 
@@ -413,7 +396,7 @@ export default function PlayersPage() {
       const res = await api.post(`/tournaments/${tournament.id}/players/bulk-import`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success(res.data.message);
       setImportOpen(false); setImportFile(null);
-      loadPlayers(tournament.id);
+      refreshAll();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       toast.error(error.response?.data?.error || 'Import failed');
@@ -428,8 +411,8 @@ export default function PlayersPage() {
 
   const handleDelete = useCallback(async (id: number) => {
     if (!tournament || !confirm('Delete?')) return;
-    try { await api.delete(`/tournaments/${tournament.id}/players/${id}`); toast.success('Deleted'); loadPlayers(tournament.id); } catch { toast.error('Failed'); }
-  }, [tournament, loadPlayers]);
+    try { await api.delete(`/tournaments/${tournament.id}/players/${id}`); toast.success('Deleted'); refreshAll(); } catch { toast.error('Failed'); }
+  }, [tournament, refreshAll]);
 
   // Memoized filter — only recomputes when players, pendingPlayers, filter, or debouncedSearch change
   const filtered = useMemo(() => {
@@ -513,7 +496,7 @@ export default function PlayersPage() {
               variant="outline"
               onClick={() => {
                 if (tournament) {
-                  loadPlayers(tournament.id);
+                  refreshAll();
                   toast.success('Data refreshed');
                 }
               }}

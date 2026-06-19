@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: 'standalone',
   images: {
+    minimumCacheTTL: 31536000, // 1 year — browser caches optimized images aggressively
+    deviceSizes: [640, 750, 828, 1080],
+    imageSizes: [36, 48, 64, 128, 256],
     remotePatterns: [
       {
         protocol: 'http',

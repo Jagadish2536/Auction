@@ -21,8 +21,17 @@ def get_cache():
 @public_bp.route('/tournaments', methods=['GET'])
 def get_public_tournaments():
     """Get all tournaments for public display."""
+    cache = get_cache()
+    cache_key = 'public_tournaments_list'
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
     tournaments = Tournament.query.order_by(Tournament.created_at.desc()).all()
-    return jsonify({'tournaments': [t.to_dict() for t in tournaments]}), 200
+    from flask import make_response
+    response = make_response(jsonify({'tournaments': [t.to_dict() for t in tournaments]}))
+    response.headers['Cache-Control'] = 'public, max-age=10, stale-while-revalidate=30'
+    cache.set(cache_key, response, timeout=10)
+    return response
 
 
 @public_bp.route('/tournament', methods=['GET'])
@@ -117,7 +126,9 @@ def get_public_players(tournament_id):
     players = Player.query.filter(Player.tournament_id == tournament_id, Player.status != 'pending').options(
         joinedload(Player.sold_team)
     ).order_by(Player.name).all()
-    response = jsonify({'players': [p.to_dict() for p in players]})
+    from flask import make_response
+    response = make_response(jsonify({'players': [p.to_dict() for p in players]}))
+    response.headers['Cache-Control'] = 'public, max-age=10, stale-while-revalidate=30'
     cache.set(cache_key, response, timeout=10)
     return response
 
@@ -143,7 +154,8 @@ def get_public_tournament_by_id(tournament_id):
     # Get auction state
     auction_state = AuctionState.query.filter_by(tournament_id=tournament.id).first()
 
-    return jsonify({
+    from flask import make_response
+    response = make_response(jsonify({
         'tournament': tournament.to_dict(),
         'stats': {
             'total_teams': len(teams),
@@ -156,7 +168,9 @@ def get_public_tournament_by_id(tournament_id):
         'sponsors': [s.to_dict() for s in sponsors],
         'advertisements': [a.to_dict() for a in ads],
         'teams': [t.to_dict() for t in teams],
-    }), 200
+    }))
+    response.headers['Cache-Control'] = 'public, max-age=5, stale-while-revalidate=15'
+    return response
 
 
 @public_bp.route('/tournament/<int:tournament_id>/register-player', methods=['POST'])

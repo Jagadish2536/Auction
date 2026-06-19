@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, memo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,8 +10,13 @@ import { AuctionFullState, Player, Tournament } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Radio, Trophy, Users, UserCircle, Gavel, Timer, TrendingUp, Home, ArrowLeft, Heart, Search } from 'lucide-react';
 import Link from 'next/link';
+import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
+import VirtualPlayerList from '@/components/ui/VirtualPlayerList';
+import { usePublicPlayers } from '@/lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries';
+import { prefetchPlayerImages, prefetchTeamImages } from '@/lib/imageCache';
 
-const DEFAULT_PLAYER_PHOTO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><circle cx='50' cy='40' r='18' fill='%23d4a843' fill-opacity='0.8'/><path d='M20 80c0-15 12-25 30-25s30 10 30 25z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_TEAM_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M35 30h30v20c0 10-8 18-15 18s-15-8-15-18V30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M45 68h10v12H45zM30 80h40v4H30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M28 35h7v10h-7zm37 0h7v10h-7z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_TOURNAMENT_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 15L20 30v25c0 20 18 35 30 40 12-5 30-20 30-40V30L50 15z' fill='%23d4a843' fill-opacity='0.2' stroke='%23d4a843' stroke-width='3'/><circle cx='50' cy='50' r='12' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 const DEFAULT_SPONSOR_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 30c-5-5-15-5-20 0s-5 15 0 20l20 20 20-20c5-5 5-15 0-20s-15-5-20 0z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
@@ -33,7 +38,8 @@ export default function LivePage() {
   const [sponsors, setSponsors] = useState<any[]>([]);
 
   // Modal details & all players state
-  const [players, setPlayers] = useState<Player[]>([]);
+  const queryClient = useQueryClient();
+  const { data: players = [], refetch: refetchPlayers } = usePublicPlayers(tournamentId);
   const [activeFilter, setActiveFilter] = useState<'total' | 'sold' | 'unsold' | 'left' | null>(null);
   const [selectedSquadPlayer, setSelectedSquadPlayer] = useState<Player | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
@@ -138,19 +144,19 @@ export default function LivePage() {
     fetchT();
   }, [tournamentId]);
 
-  const fetchPlayers = () => {
-    if (!tournamentId) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/public/tournament/${tournamentId}/players`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.players) setPlayers(d.players);
-      }).catch(() => {});
-  };
-
-  // Fetch players list only when the total sold or unsold count changes, or when tournament changes
+  // Invalidate player cache when stats change (player sold/unsold)
   useEffect(() => {
-    fetchPlayers();
-  }, [tournamentId, state?.stats?.sold, state?.stats?.unsold]);
+    if (tournamentId) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.publicPlayers(tournamentId) });
+    }
+  }, [tournamentId, state?.stats?.sold, state?.stats?.unsold, queryClient]);
+
+  // Preload team images when state updates
+  useEffect(() => {
+    if (state?.teams) {
+      prefetchTeamImages(state.teams);
+    }
+  }, [state?.teams]);
 
   useEffect(() => {
     if (!tournamentId) return;
@@ -205,28 +211,30 @@ export default function LivePage() {
   const player = auction?.current_player;
   const isLive = auction?.status === 'live';
 
-  // Filter players for stats modals
-  const filteredPlayers = players.filter((p) => {
-    // Status filter
-    let statusMatch = false;
-    if (activeFilter === 'total') statusMatch = true;
-    else if (activeFilter === 'sold') statusMatch = p.status === 'sold';
-    else if (activeFilter === 'unsold') statusMatch = p.status === 'unsold';
-    else if (activeFilter === 'left') statusMatch = p.status === 'available';
-    if (!statusMatch) return false;
+  // Memoized filtered players — only recomputes when dependencies change
+  const filteredPlayers = useMemo(() => {
+    return players.filter((p) => {
+      // Status filter
+      let statusMatch = false;
+      if (activeFilter === 'total') statusMatch = true;
+      else if (activeFilter === 'sold') statusMatch = p.status === 'sold';
+      else if (activeFilter === 'unsold') statusMatch = p.status === 'unsold';
+      else if (activeFilter === 'left') statusMatch = p.status === 'available';
+      if (!statusMatch) return false;
 
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      return (
-        p.name?.toLowerCase().includes(q) ||
-        p.village?.toLowerCase().includes(q) ||
-        p.playing_style?.toLowerCase().includes(q) ||
-        p.mobile?.includes(q)
-      );
-    }
-    return true;
-  });
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        return (
+          p.name?.toLowerCase().includes(q) ||
+          p.village?.toLowerCase().includes(q) ||
+          p.playing_style?.toLowerCase().includes(q) ||
+          p.mobile?.includes(q)
+        );
+      }
+      return true;
+    });
+  }, [players, activeFilter, searchQuery]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -436,7 +444,7 @@ export default function LivePage() {
                   key={s.label}
                   className="glass-card border border-gold/5 cursor-pointer hover:border-gold/30 hover:bg-navy-lighter/30 transition-all duration-200"
                   onClick={() => {
-                    fetchPlayers();
+                    refetchPlayers();
                     setActiveFilter(s.filterKey);
                   }}
                 >
@@ -723,74 +731,71 @@ export default function LivePage() {
               className="w-full pl-9 pr-4 py-2 bg-navy-lighter/50 border border-gold/10 rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/30 focus:ring-1 focus:ring-gold/20 transition-all"
             />
           </div>
-          <ScrollArea className="max-h-[60vh] pr-4 mt-4">
-            <div className="space-y-3">
-              {filteredPlayers.map((p) => (
-                <div key={p.id} className="flex items-center gap-4 p-3 rounded-xl bg-navy-lighter/30 border border-border/50">
-                  <div className="w-12 h-12 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
-                    {p.photo ? (
-                      <img
-                        src={getImageUrl(p.photo)}
-                        alt={p.name}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                        onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
-                        title="Click to enlarge"
-                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
-                      />
-                    ) : (
-                      <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <button
-                      onClick={() => setSelectedSquadPlayer(p)}
-                      className="text-sm font-semibold text-foreground hover:text-gold transition-colors truncate text-left flex items-center gap-1.5 cursor-pointer"
-                    >
-                      {p.name}
-                    </button>
-                    {p.crickheroes_url && (
-                      <a
-                        href={ensureUrl(p.crickheroes_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] text-gold font-normal border border-gold/20 px-1.5 py-0.5 rounded-sm hover:bg-gold/10 transition-colors shrink-0"
-                      >
-                        Profile ↗
-                      </a>
-                    )}
-                    <p className="text-xs text-muted-foreground">{p.village} | {p.playing_style}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {p.status === 'sold' ? (
-                      <>
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 mb-1">
-                          Sold to {p.sold_team_name}
-                        </Badge>
-                        <p className="text-sm font-bold text-green-400">₹{p.sold_price?.toLocaleString('en-IN')}</p>
-                      </>
-                    ) : p.status === 'unsold' ? (
-                      <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                        Unsold
-                      </Badge>
-                    ) : (
-                      <>
-                        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 mb-1">
-                          Available
-                        </Badge>
-                        <p className="text-xs text-muted-foreground">Base: ₹{p.base_price.toLocaleString('en-IN')}</p>
-                      </>
-                    )}
-                  </div>
+          <VirtualPlayerList<Player>
+            items={filteredPlayers}
+            rowHeight={80}
+            maxHeight="60vh"
+            keyExtractor={(p) => p.id}
+            emptyMessage="No players found"
+            emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
+            className="pr-4 mt-4"
+            renderRow={(p) => (
+              <div className="flex items-center gap-4 p-3 rounded-xl bg-navy-lighter/30 border border-border/50">
+                <div className="w-12 h-12 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
+                  <OptimizedImage
+                    src={p.photo ? getImageUrl(p.photo) : null}
+                    alt={p.name}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
+                    onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
+                    title="Click to enlarge"
+                  />
                 </div>
-              ))}
-              {filteredPlayers.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No players found</p>
-              )}
-            </div>
-          </ScrollArea>
+                <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => setSelectedSquadPlayer(p)}
+                    className="text-sm font-semibold text-foreground hover:text-gold transition-colors truncate text-left flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {p.name}
+                  </button>
+                  {p.crickheroes_url && (
+                    <a
+                      href={ensureUrl(p.crickheroes_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] text-gold font-normal border border-gold/20 px-1.5 py-0.5 rounded-sm hover:bg-gold/10 transition-colors shrink-0"
+                    >
+                      Profile ↗
+                    </a>
+                  )}
+                  <p className="text-xs text-muted-foreground">{p.village} | {p.playing_style}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  {p.status === 'sold' ? (
+                    <>
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 mb-1">
+                        Sold to {p.sold_team_name}
+                      </Badge>
+                      <p className="text-sm font-bold text-green-400">₹{p.sold_price?.toLocaleString('en-IN')}</p>
+                    </>
+                  ) : p.status === 'unsold' ? (
+                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                      Unsold
+                    </Badge>
+                  ) : (
+                    <>
+                      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 mb-1">
+                        Available
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">Base: ₹{p.base_price.toLocaleString('en-IN')}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          />
         </DialogContent>
       </Dialog>
 
