@@ -38,17 +38,54 @@ def save_upload(file, subfolder='photos'):
     filename = f"{uuid.uuid4().hex}.{ext}"
     key = f"uploads/{subfolder}/{filename}"
 
+    # Try to optimize/compress image if subfolder is photos, teams, sponsors, or tournaments
+    optimized_data = None
+    if subfolder in ('photos', 'teams', 'sponsors', 'tournaments'):
+        try:
+            from PIL import Image
+            import io
+            
+            # Reset file stream position
+            file.seek(0)
+            img = Image.open(file.stream)
+            
+            # Convert to RGB mode (needed for saving as JPEG if source is PNG/RGBA)
+            if img.mode in ('RGBA', 'LA'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[3] if len(img.split()) > 3 else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Resize image maintaining aspect ratio (e.g. max 1000px width/height)
+            img.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
+            
+            # Save to in-memory bytes stream
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=85, optimize=True)
+            buffer.seek(0)
+            
+            optimized_data = buffer
+            ext = 'jpg'
+            filename = f"{uuid.uuid4().hex}.jpg"
+            key = f"uploads/{subfolder}/{filename}"
+        except Exception as e:
+            current_app.logger.warning(f"Image optimization skipped/failed: {e}")
+            file.seek(0)
+
     s3, bucket = _get_s3_client()
 
     if s3 and bucket:
         # Production: upload to S3
         try:
+            upload_source = optimized_data if optimized_data else file
+            content_type = 'image/jpeg' if optimized_data else (file.content_type or 'image/jpeg')
             s3.upload_fileobj(
-                file,
+                upload_source,
                 bucket,
                 key,
                 ExtraArgs={
-                    'ContentType': file.content_type or 'image/jpeg',
+                    'ContentType': content_type,
                     'CacheControl': 'public, max-age=31536000',
                 }
             )
@@ -62,7 +99,11 @@ def save_upload(file, subfolder='photos'):
         upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
         os.makedirs(upload_dir, exist_ok=True)
         filepath = os.path.join(upload_dir, filename)
-        file.save(filepath)
+        if optimized_data:
+            with open(filepath, 'wb') as f:
+                f.write(optimized_data.getvalue())
+        else:
+            file.save(filepath)
         return f"/uploads/{subfolder}/{filename}"
 
 

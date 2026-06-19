@@ -194,6 +194,21 @@ def create_app(config_name=None):
         from seed import seed_manager
         seed_manager(app)
 
+        # Trigger background image optimization scan automatically in a non-blocking thread
+        def run_background_optimization():
+            import eventlet
+            eventlet.sleep(5)
+            try:
+                from optimize_existing_photos import main as run_optimize
+                print("[INFO] Starting background image optimization scan...")
+                run_optimize(app)
+                print("[INFO] Background image optimization scan complete.")
+            except Exception as opt_err:
+                print(f"[WARNING] Background image optimization failed/skipped: {opt_err}")
+        
+        import eventlet
+        eventlet.spawn(run_background_optimization)
+
     # Optimized before_request: skip for public/static routes immediately
     @app.before_request
     def check_tournament_access():
