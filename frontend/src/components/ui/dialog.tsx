@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ modal = "trap-focus", ...props }: DialogPrimitive.Root.Props) {
+function Dialog({ modal = true, ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" modal={modal} {...props} />
 }
 

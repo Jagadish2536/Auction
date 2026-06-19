@@ -12,7 +12,7 @@ import api from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Tournament } from '@/types';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Trophy, Calendar, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, Trophy, Calendar, MapPin, Loader2 } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -42,6 +42,7 @@ export default function TournamentsPage() {
     youtube_url: ''
   });
   const [logo, setLogo] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(() => { api.get('/tournaments').then((r) => setTournaments(r.data.tournaments)).catch(() => {}); }, []);
   useEffect(() => { load(); }, [load]);
@@ -59,6 +60,27 @@ export default function TournamentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim()) {
+      toast.error('Tournament name is required');
+      return;
+    }
+
+    // Client-side logo validation
+    if (logo) {
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+      const fileExt = logo.name.split('.').pop()?.toLowerCase();
+      if (!fileExt || !allowedExts.includes(fileExt)) {
+        toast.error('Invalid logo format. Only JPG, JPEG, PNG, and WEBP images are supported.');
+        return;
+      }
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (logo.size > maxSize) {
+        toast.error('Logo size too large. Please upload an image smaller than 10MB.');
+        return;
+      }
+    }
+
+    setSubmitting(true);
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
     if (logo) fd.append('logo', logo);
@@ -88,7 +110,12 @@ export default function TournamentsPage() {
       });
       setLogo(null);
       load();
-    } catch { toast.error('Failed to save tournament'); }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || 'Failed to save tournament');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (t: Tournament) => {
@@ -147,7 +174,16 @@ export default function TournamentsPage() {
               <div><Label>Auction Date & Time</Label><Input type="datetime-local" value={form.auction_date} onChange={(e) => setForm({ ...form, auction_date: e.target.value })} className="bg-navy-lighter/50" /></div>
               <div><Label>YouTube Live URL</Label><Input type="url" placeholder="https://youtube.com/live/..." value={form.youtube_url} onChange={(e) => setForm({ ...form, youtube_url: e.target.value })} className="bg-navy-lighter/50" /></div>
               <div><Label>Logo</Label><Input type="file" accept="image/*" onChange={(e) => setLogo(e.target.files?.[0] || null)} className="bg-navy-lighter/50" /></div>
-              <Button type="submit" className="w-full bg-gold hover:bg-gold-dark text-navy">{editing ? 'Update' : 'Create'} Tournament</Button>
+              <Button type="submit" disabled={submitting} className="w-full bg-gold hover:bg-gold-dark text-navy font-semibold">
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    {editing ? 'Updating' : 'Creating'} Tournament...
+                  </>
+                ) : (
+                  `${editing ? 'Update' : 'Create'} Tournament`
+                )}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>

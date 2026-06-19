@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import api, { getImageUrl } from '@/lib/api';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Heart, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Heart, ExternalLink, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 const DEFAULT_SPONSOR_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M50 30c-5-5-15-5-20 0s-5 15 0 20l20 20 20-20c5-5 5-15 0-20s-15-5-20 0z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 
@@ -29,6 +29,7 @@ export default function SponsorsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Sponsor | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -87,6 +88,22 @@ export default function SponsorsPage() {
       return;
     }
 
+    // Client-side logo validation
+    if (logoFile) {
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+      const fileExt = logoFile.name.split('.').pop()?.toLowerCase();
+      if (!fileExt || !allowedExts.includes(fileExt)) {
+        toast.error('Invalid logo format. Only JPG, JPEG, PNG, and WEBP images are supported.');
+        return;
+      }
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (logoFile.size > maxSize) {
+        toast.error('Logo size too large. Please upload an image smaller than 10MB.');
+        return;
+      }
+    }
+
+    setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('name', name);
@@ -112,7 +129,9 @@ export default function SponsorsPage() {
       loadSponsors();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      toast.error(error.response?.data?.error || 'Operation failed');
+      toast.error(error.response?.data?.error || 'Failed to save sponsor');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -208,8 +227,15 @@ export default function SponsorsPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-gold hover:bg-gold-dark text-navy font-semibold">
-                {editing ? 'Update' : 'Create'} Sponsor
+              <Button type="submit" disabled={submitting} className="w-full bg-gold hover:bg-gold-dark text-navy font-semibold">
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    {editing ? 'Updating' : 'Creating'} Sponsor...
+                  </>
+                ) : (
+                  `${editing ? 'Update' : 'Create'} Sponsor`
+                )}
               </Button>
             </form>
           </DialogContent>

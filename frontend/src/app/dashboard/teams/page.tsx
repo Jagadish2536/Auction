@@ -10,7 +10,7 @@ import api, { getImageUrl } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Team, Tournament } from '@/types';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Users, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, DollarSign, Loader2 } from 'lucide-react';
 
 const DEFAULT_TEAM_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect width='100' height='100' rx='20' fill='%231a2d52'/><path d='M35 30h30v20c0 10-8 18-15 18s-15-8-15-18V30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M45 68h10v12H45zM30 80h40v4H30z' fill='%23d4a843' fill-opacity='0.8'/><path d='M28 35h7v10h-7zm37 0h7v10h-7z' fill='%23d4a843' fill-opacity='0.8'/></svg>";
 
@@ -21,6 +21,7 @@ export default function TeamsPage() {
   const [editing, setEditing] = useState<Team | null>(null);
   const [form, setForm] = useState({ name: '', owner_name: '', captain_name: '', budget: '1000000', max_players: '15' });
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const loadTeams = useCallback((tid: number) => api.get(`/tournaments/${tid}/teams`).then((r) => setTeams(r.data.teams)).catch(() => {}), []);
 
@@ -78,7 +79,27 @@ export default function TeamsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tournament) return;
+    if (!form.name.trim()) {
+      toast.error('Team name is required');
+      return;
+    }
 
+    // Client-side logo validation
+    if (logoFile) {
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+      const fileExt = logoFile.name.split('.').pop()?.toLowerCase();
+      if (!fileExt || !allowedExts.includes(fileExt)) {
+        toast.error('Invalid logo format. Only JPG, JPEG, PNG, and WEBP images are supported.');
+        return;
+      }
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (logoFile.size > maxSize) {
+        toast.error('Logo size too large. Please upload an image smaller than 10MB.');
+        return;
+      }
+    }
+
+    setSubmitting(true);
     const formData = new FormData();
     formData.append('name', form.name);
     formData.append('owner_name', form.owner_name);
@@ -112,7 +133,12 @@ export default function TeamsPage() {
         max_players: String(tournament?.players_per_team ?? '15')
       });
       loadTeams(tournament.id);
-    } catch { toast.error('Failed'); }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || 'Failed to save team');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (t: Team) => {
@@ -148,7 +174,16 @@ export default function TeamsPage() {
                   className="bg-navy-lighter/50 cursor-pointer"
                 />
               </div>
-              <Button type="submit" className="w-full bg-gold hover:bg-gold-dark text-navy">{editing ? 'Update' : 'Add'} Team</Button>
+              <Button type="submit" disabled={submitting} className="w-full bg-gold hover:bg-gold-dark text-navy">
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    {editing ? 'Updating' : 'Adding'} Team...
+                  </>
+                ) : (
+                  `${editing ? 'Update' : 'Add'} Team`
+                )}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>

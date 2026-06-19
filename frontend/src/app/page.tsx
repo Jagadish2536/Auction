@@ -126,21 +126,16 @@ function HomePageContent() {
   useEffect(() => {
     const isModalOpen = pubModalType !== null || enlargedPhoto !== null;
     if (isModalOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
       
       return () => {
-        const scrollYStr = document.body.style.top;
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.height = '';
         document.body.style.overflow = '';
-        if (scrollYStr) {
-          window.scrollTo(0, parseInt(scrollYStr, 10) * -1);
-        }
+        document.body.style.height = '';
       };
     }
   }, [pubModalType, enlargedPhoto]);
@@ -813,64 +808,123 @@ function HomePageContent() {
               />
             </div>
             <div
-              className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar overscroll-contain"
+              className="overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {getPubFilteredPlayers().length > 0 ? (
-                <Table className="min-w-[650px] w-full">
-                  <TableHeader>
-                    <TableRow className="border-border/30">
-                      <TableHead>Player</TableHead>
-                      <TableHead>Village</TableHead>
-                      <TableHead>Style</TableHead>
-                      <TableHead>Base Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      {(pubModalType === 'sold' || pubModalType === 'total') && <TableHead>Sold To</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile View: list of player cards */}
+                  <div className="md:hidden space-y-2.5">
                     {getPubFilteredPlayers().map((p) => (
-                      <TableRow key={p.id} className="border-border/20 hover:bg-navy-lighter/30">
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
-                              {p.photo ? (
-                                <img
-                                  src={getImageUrl(p.photo)}
-                                  alt=""
-                                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                                  onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
-                                  title="Click to enlarge"
-                                  onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
-                                />
-                              ) : (
-                                <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover" />
+                      <div key={p.id} className="p-3 rounded-xl bg-navy-lighter/20 border border-gold/10 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-navy-lighter overflow-hidden shrink-0 border border-gold/10">
+                            {p.photo ? (
+                              <img
+                                src={getImageUrl(p.photo)}
+                                alt=""
+                                className="w-full h-full object-cover cursor-pointer"
+                                onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
+                                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
+                              />
+                            ) : (
+                              <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-foreground text-sm">{p.name}</span>
+                              {p.crickheroes_url && (
+                                <a href={ensureUrl(p.crickheroes_url)} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light">
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
                               )}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <span className="font-medium text-foreground text-sm">{p.name}</span>
-                                {p.crickheroes_url && <a href={ensureUrl(p.crickheroes_url)} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light"><ExternalLink className="w-3 h-3" /></a>}
+                            <div className="text-[11px] text-muted-foreground mt-0.5 space-y-0.5">
+                              <div>Age: {p.age || '-'} • {p.village || 'No Village'}</div>
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                <Badge variant="outline" className="text-[9px] border-gold/20 text-gold px-1.5 py-0">
+                                  {p.playing_style || '-'}
+                                </Badge>
+                                <Badge className={`text-[9px] px-1.5 py-0 ${pubStatusColors[p.status]}`}>
+                                  {p.status}
+                                </Badge>
                               </div>
-                              {p.age && <span className="text-xs text-muted-foreground">Age: {p.age}</span>}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{p.village || '-'}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-xs border-gold/20 text-gold">{p.playing_style || '-'}</Badge></TableCell>
-                        <TableCell className="text-sm">₹{p.base_price.toLocaleString('en-IN')}</TableCell>
-                        <TableCell><Badge className={`text-xs ${pubStatusColors[p.status]}`}>{p.status}</Badge></TableCell>
-                        {(pubModalType === 'sold' || pubModalType === 'total') && (
-                          <TableCell className="text-sm">
-                            {p.sold_team_name ? (
-                              <div><span className="text-green-400 font-medium">{p.sold_team_name}</span><span className="text-muted-foreground ml-1.5">₹{p.sold_price?.toLocaleString('en-IN')}</span></div>
-                            ) : '-'}
-                          </TableCell>
-                        )}
-                      </TableRow>
+                        </div>
+                        
+                        <div className="text-right space-y-1 shrink-0">
+                          <div className="text-[11px] text-muted-foreground">Base: <span className="text-foreground font-semibold">₹{p.base_price.toLocaleString('en-IN')}</span></div>
+                          {p.sold_team_name && (
+                            <div className="text-[10px] bg-green-500/10 border border-green-500/20 rounded px-1.5 py-0.5 mt-1">
+                              <div className="text-green-400 font-medium truncate max-w-[90px]">{p.sold_team_name}</div>
+                              <div className="text-white font-bold">₹{p.sold_price?.toLocaleString('en-IN')}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop View: Full horizontal table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table className="min-w-[650px] w-full">
+                      <TableHeader>
+                        <TableRow className="border-border/30">
+                          <TableHead>Player</TableHead>
+                          <TableHead>Village</TableHead>
+                          <TableHead>Style</TableHead>
+                          <TableHead>Base Price</TableHead>
+                          <TableHead>Status</TableHead>
+                          {(pubModalType === 'sold' || pubModalType === 'total') && <TableHead>Sold To</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getPubFilteredPlayers().map((p) => (
+                          <TableRow key={p.id} className="border-border/20 hover:bg-navy-lighter/30">
+                            <TableCell>
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
+                                  {p.photo ? (
+                                    <img
+                                      src={getImageUrl(p.photo)}
+                                      alt=""
+                                      className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
+                                      onClick={() => setEnlargedPhoto(getImageUrl(p.photo))}
+                                      title="Click to enlarge"
+                                      onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
+                                    />
+                                  ) : (
+                                    <img src={DEFAULT_PLAYER_PHOTO} alt="" className="w-full h-full object-cover" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium text-foreground text-sm">{p.name}</span>
+                                    {p.crickheroes_url && <a href={ensureUrl(p.crickheroes_url)} target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light"><ExternalLink className="w-3 h-3" /></a>}
+                                  </div>
+                                  {p.age && <span className="text-xs text-muted-foreground">Age: {p.age}</span>}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{p.village || '-'}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-xs border-gold/20 text-gold">{p.playing_style || '-'}</Badge></TableCell>
+                            <TableCell className="text-sm">₹{p.base_price.toLocaleString('en-IN')}</TableCell>
+                            <TableCell><Badge className={`text-xs ${pubStatusColors[p.status]}`}>{p.status}</Badge></TableCell>
+                            {(pubModalType === 'sold' || pubModalType === 'total') && (
+                              <TableCell className="text-sm">
+                                {p.sold_team_name ? (
+                                  <div><span className="text-green-400 font-medium">{p.sold_team_name}</span><span className="text-muted-foreground ml-1.5">₹{p.sold_price?.toLocaleString('en-IN')}</span></div>
+                                ) : '-'}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : (
                 <div className="p-10 text-center"><UserCircle className="w-12 h-12 text-gold/20 mx-auto mb-3" /><p className="text-muted-foreground text-sm">No players in this category</p></div>
               )}
@@ -888,60 +942,119 @@ function HomePageContent() {
               </DialogTitle>
             </DialogHeader>
             <div
-              className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar overscroll-contain"
+              className="overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {pubTeams.length > 0 ? (
-                <Table className="min-w-[650px] w-full">
-                  <TableHeader>
-                    <TableRow className="border-border/30">
-                      <TableHead>Team</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Players</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Remaining</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile View: list of team cards */}
+                  <div className="md:hidden space-y-2.5">
                     {pubTeams.map((t) => {
                       const spentPct = t.budget > 0 ? ((t.budget - t.remaining_budget) / t.budget) * 100 : 0;
                       return (
-                        <TableRow key={t.id} className="border-border/20 hover:bg-navy-lighter/30">
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
-                                {t.logo ? (
-                                  <img
-                                    src={getImageUrl(t.logo)}
-                                    alt=""
-                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                                    onClick={() => setEnlargedPhoto(getImageUrl(t.logo))}
-                                    title="Click to enlarge"
-                                    onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
-                                  />
-                                ) : (
-                                  <img src={DEFAULT_TEAM_LOGO} alt="" className="w-full h-full object-cover" />
-                                )}
-                              </div>
-                              <span className="font-medium text-foreground text-sm">{t.name}</span>
+                        <div key={t.id} className="p-3 rounded-xl bg-navy-lighter/20 border border-gold/10 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center border border-gold/10">
+                              {t.logo ? (
+                                <img
+                                  src={getImageUrl(t.logo)}
+                                  alt=""
+                                  className="w-full h-full object-cover cursor-pointer"
+                                  onClick={() => setEnlargedPhoto(getImageUrl(t.logo))}
+                                  onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
+                                />
+                              ) : (
+                                <img src={DEFAULT_TEAM_LOGO} alt="" className="w-full h-full object-cover" />
+                              )}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{t.owner_name || '-'}</TableCell>
-                          <TableCell className="text-sm">{t.player_count} / {t.max_players}</TableCell>
-                          <TableCell className="text-sm">₹{t.budget.toLocaleString('en-IN')}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <span className="text-sm text-green-400 font-medium">₹{t.remaining_budget.toLocaleString('en-IN')}</span>
-                              <div className="h-1.5 w-20 bg-navy-lighter rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full transition-all" style={{ width: `${spentPct}%` }} />
-                              </div>
+                            <div>
+                              <h4 className="font-semibold text-foreground text-sm">{t.name}</h4>
+                              <p className="text-xs text-muted-foreground">Owner: {t.owner_name || '-'}</p>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-xs pt-1 border-t border-border/10">
+                            <div>
+                              <div className="text-muted-foreground text-[10px]">Players</div>
+                              <div className="font-semibold text-foreground">{t.player_count} / {t.max_players}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground text-[10px]">Budget</div>
+                              <div className="font-semibold text-gold">₹{t.budget.toLocaleString('en-IN')}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground text-[10px]">Remaining</div>
+                              <div className="font-semibold text-green-400">₹{t.remaining_budget.toLocaleString('en-IN')}</div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[9px] text-muted-foreground">
+                              <span>Spent: {Math.round(spentPct)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-navy-lighter rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full transition-all" style={{ width: `${spentPct}%` }} />
+                            </div>
+                          </div>
+                        </div>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop View: Full horizontal table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table className="min-w-[650px] w-full">
+                      <TableHeader>
+                        <TableRow className="border-border/30">
+                          <TableHead>Team</TableHead>
+                          <TableHead>Owner</TableHead>
+                          <TableHead>Players</TableHead>
+                          <TableHead>Budget</TableHead>
+                          <TableHead>Remaining</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pubTeams.map((t) => {
+                          const spentPct = t.budget > 0 ? ((t.budget - t.remaining_budget) / t.budget) * 100 : 0;
+                          return (
+                            <TableRow key={t.id} className="border-border/20 hover:bg-navy-lighter/30">
+                              <TableCell>
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-lg bg-navy-lighter overflow-hidden shrink-0 flex items-center justify-center">
+                                    {t.logo ? (
+                                      <img
+                                        src={getImageUrl(t.logo)}
+                                        alt=""
+                                        className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
+                                        onClick={() => setEnlargedPhoto(getImageUrl(t.logo))}
+                                        title="Click to enlarge"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_TEAM_LOGO; }}
+                                      />
+                                    ) : (
+                                      <img src={DEFAULT_TEAM_LOGO} alt="" className="w-full h-full object-cover" />
+                                    )}
+                                  </div>
+                                  <span className="font-medium text-foreground text-sm">{t.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{t.owner_name || '-'}</TableCell>
+                              <TableCell className="text-sm">{t.player_count} / {t.max_players}</TableCell>
+                              <TableCell className="text-sm">₹{t.budget.toLocaleString('en-IN')}</TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <span className="text-sm text-green-400 font-medium">₹{t.remaining_budget.toLocaleString('en-IN')}</span>
+                                  <div className="h-1.5 w-20 bg-navy-lighter rounded-full overflow-hidden">
+                                    <div className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full transition-all" style={{ width: `${spentPct}%` }} />
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : (
                 <div className="p-10 text-center"><Trophy className="w-12 h-12 text-gold/20 mx-auto mb-3" /><p className="text-muted-foreground text-sm">No teams created yet</p></div>
               )}

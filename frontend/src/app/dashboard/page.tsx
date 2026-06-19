@@ -39,21 +39,16 @@ export default function DashboardPage() {
   useEffect(() => {
     const isModalOpen = modalType !== null;
     if (isModalOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
       
       return () => {
-        const scrollYStr = document.body.style.top;
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.height = '';
         document.body.style.overflow = '';
-        if (scrollYStr) {
-          window.scrollTo(0, parseInt(scrollYStr, 10) * -1);
-        }
+        document.body.style.height = '';
       };
     }
   }, [modalType]);

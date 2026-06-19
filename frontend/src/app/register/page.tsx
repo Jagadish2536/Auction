@@ -73,6 +73,20 @@ function RegisterFormContent() {
       toast.error('Profile photo is required');
       return;
     }
+
+    // Client-side photo validation
+    const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+    const fileExt = photo.name.split('.').pop()?.toLowerCase();
+    if (!fileExt || !allowedExts.includes(fileExt)) {
+      toast.error('Invalid photo format. Only JPG, JPEG, PNG, and WEBP images are supported.');
+      return;
+    }
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (photo.size > maxSize) {
+      toast.error('Photo size too large. Please upload an image smaller than 10MB.');
+      return;
+    }
+
     if (!form.name.trim()) {
       toast.error('Player name is required');
       return;
@@ -109,7 +123,6 @@ function RegisterFormContent() {
 
   const submitRegistration = async () => {
     if (!tournament) return;
-    setShowConfirmDialog(false);
     setSubmitting(true);
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const fd = new FormData();
@@ -129,6 +142,7 @@ function RegisterFormContent() {
       }
       setSuccess(true);
       toast.success('Registration successful! Waiting for approval.');
+      setShowConfirmDialog(false);
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || 'Something went wrong');
@@ -412,10 +426,17 @@ function RegisterFormContent() {
               </div>
             </div>
           </div>
+          {submitting && (
+            <div className="flex items-center justify-center gap-2 p-2.5 bg-gold/10 border border-gold/20 rounded-lg text-xs text-gold animate-pulse mt-3">
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              <span>Uploading photo and details... Please keep this page open.</span>
+            </div>
+          )}
           <div className="flex gap-3 mt-4">
             <Button
               type="button"
               variant="outline"
+              disabled={submitting}
               onClick={() => setShowConfirmDialog(false)}
               className="flex-1 border-white/10 text-white hover:bg-white/5"
             >
@@ -423,10 +444,18 @@ function RegisterFormContent() {
             </Button>
             <Button
               type="button"
+              disabled={submitting}
               onClick={submitRegistration}
-              className="flex-1 bg-gold hover:bg-gold-dark text-navy font-bold"
+              className="flex-1 bg-gold hover:bg-gold-dark text-navy font-bold flex items-center justify-center gap-1.5"
             >
-              Confirm & Submit
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Confirm & Submit'
+              )}
             </Button>
           </div>
         </DialogContent>

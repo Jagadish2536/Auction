@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import api, { getImageUrl } from '@/lib/api';
 import { Player, Tournament } from '@/types';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Upload, UserCircle, Search, ExternalLink, Link as LinkIcon, Copy, Check, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, UserCircle, Search, ExternalLink, Link as LinkIcon, Copy, Check, RefreshCw, Loader2 } from 'lucide-react';
 import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
 import { usePlayers, usePendingPlayers, useTournament, useSocketInvalidation } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -317,26 +317,22 @@ export default function PlayersPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Lock body scroll on mobile/iOS when any modal is open
   useEffect(() => {
     const isModalOpen = open || importOpen || regOpen || enlargedPhoto !== null;
     if (isModalOpen) {
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
       
       return () => {
-        const scrollYStr = document.body.style.top;
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.height = '';
         document.body.style.overflow = '';
-        if (scrollYStr) {
-          window.scrollTo(0, parseInt(scrollYStr, 10) * -1);
-        }
+        document.body.style.height = '';
       };
     }
   }, [open, importOpen, regOpen, enlargedPhoto]);
@@ -405,6 +401,23 @@ export default function PlayersPage() {
     if (!form.age) { toast.error('Age is required'); return; }
     if (!form.crickheroes_url.trim()) { toast.error('CricHeroes Profile URL is required'); return; }
     if (!editing && !photo) { toast.error('Photo is required'); return; }
+
+    // Client-side photo validation
+    if (photo) {
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+      const fileExt = photo.name.split('.').pop()?.toLowerCase();
+      if (!fileExt || !allowedExts.includes(fileExt)) {
+        toast.error('Invalid photo format. Only JPG, JPEG, PNG, and WEBP images are supported.');
+        return;
+      }
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (photo.size > maxSize) {
+        toast.error('Photo size too large. Please upload an image smaller than 10MB.');
+        return;
+      }
+    }
+
+    setSubmitting(true);
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
     if (photo) fd.append('photo', photo);
@@ -421,7 +434,12 @@ export default function PlayersPage() {
       setForm({ name: '', village: '', mobile: '', playing_style: '', age: '', crickheroes_url: '' });
       setPhoto(null);
       refreshAll();
-    } catch { toast.error('Failed'); }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || 'Failed to save player');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleImport = async () => {
@@ -569,7 +587,16 @@ export default function PlayersPage() {
                 </div>
                 <div><Label>CricHeroes Profile URL *</Label><Input value={form.crickheroes_url} onChange={(e) => setForm({ ...form, crickheroes_url: e.target.value })} required placeholder="https://cricheroes.com/..." className="bg-navy-lighter/50" /></div>
                 <div><Label>Photo {!editing ? '*' : ''}</Label><Input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} className="bg-navy-lighter/50" />{editing && <p className="text-xs text-muted-foreground mt-1">Leave empty to keep current photo</p>}</div>
-                <Button type="submit" className="w-full bg-gold hover:bg-gold-dark text-navy">{editing ? 'Update' : 'Add'} Player</Button>
+                <Button type="submit" disabled={submitting} className="w-full bg-gold hover:bg-gold-dark text-navy">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      {editing ? 'Updating' : 'Adding'} Player...
+                    </>
+                  ) : (
+                    `${editing ? 'Update' : 'Add'} Player`
+                  )}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
