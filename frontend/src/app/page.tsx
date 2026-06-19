@@ -122,6 +122,29 @@ function HomePageContent() {
     checkAuth();
   }, [checkAuth]);
 
+  // Lock body scroll on mobile/iOS when any modal is open
+  useEffect(() => {
+    const isModalOpen = pubModalType !== null || enlargedPhoto !== null;
+    if (isModalOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        const scrollYStr = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        if (scrollYStr) {
+          window.scrollTo(0, parseInt(scrollYStr, 10) * -1);
+        }
+      };
+    }
+  }, [pubModalType, enlargedPhoto]);
+
   useEffect(() => {
     if (selectedTid) {
       fetchTournamentData();
@@ -1022,13 +1045,13 @@ function HomePageContent() {
               </div>
             </div>
             {mounted && isAuthenticated && user ? (
-              <Link href="/dashboard">
+              <Link href="/dashboard" prefetch={false}>
                 <Button size="sm" className="bg-gold hover:bg-gold-dark text-navy font-semibold shadow-md glow-gold-sm">
                   {user.role === 'admin' ? 'Admin Dashboard' : 'Manager Dashboard'}
                 </Button>
               </Link>
             ) : mounted ? (
-              <Link href="/login">
+              <Link href="/login" prefetch={false}>
                 <Button size="sm" className="bg-gold hover:bg-gold-dark text-navy font-semibold shadow-md glow-gold-sm">
                   <LogIn className="w-4 h-4 mr-2" /> Login
                 </Button>

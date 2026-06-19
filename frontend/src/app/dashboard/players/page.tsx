@@ -318,6 +318,29 @@ export default function PlayersPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
 
+  // Lock body scroll on mobile/iOS when any modal is open
+  useEffect(() => {
+    const isModalOpen = open || importOpen || regOpen || enlargedPhoto !== null;
+    if (isModalOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        const scrollYStr = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        if (scrollYStr) {
+          window.scrollTo(0, parseInt(scrollYStr, 10) * -1);
+        }
+      };
+    }
+  }, [open, importOpen, regOpen, enlargedPhoto]);
+
   const regUrl = typeof window !== 'undefined' ? `${window.location.origin}/register${tournament?.registration_code ? `?code=${tournament.registration_code}` : ''}` : '';
 
   const copyToClipboard = () => {

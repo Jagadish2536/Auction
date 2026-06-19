@@ -35,6 +35,29 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Lock body scroll on mobile/iOS when any modal is open
+  useEffect(() => {
+    const isModalOpen = modalType !== null;
+    if (isModalOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        const scrollYStr = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        if (scrollYStr) {
+          window.scrollTo(0, parseInt(scrollYStr, 10) * -1);
+        }
+      };
+    }
+  }, [modalType]);
+
   // React Query hooks — cached, deduplicated, auto-invalidated
   const { data: activeTournament } = useTournament(tournamentId);
   const { data: analytics } = useAnalytics(tournamentId);
