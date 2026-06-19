@@ -1218,18 +1218,15 @@ function HomePageContent() {
         </div>
       </footer>
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
-        <DialogContent className="glass border-gold/10 p-2 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh]">
+        <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
           {enlargedPhoto && (
-            <div
-              className="overflow-auto max-h-[85vh] w-full flex justify-start sm:justify-center items-start sm:items-center overscroll-contain"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-              <img
-                src={enlargedPhoto}
-                alt="Enlarged View"
-                className="min-w-[600px] sm:min-w-0 w-auto sm:w-full max-w-none sm:max-w-full h-auto object-contain rounded-lg shadow-2xl"
-              />
-            </div>
+            <img
+              src={enlargedPhoto}
+              alt="Enlarged View"
+              loading="eager"
+              className="w-auto h-auto max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
+              onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
+            />
           )}
         </DialogContent>
       </Dialog>
