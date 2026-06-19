@@ -321,12 +321,26 @@ export default function PlayersPage() {
 
   // Lock body scroll on mobile/iOS when any modal is open
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (!isMobile) return;
+
     const isModalOpen = open || importOpen || regOpen || enlargedPhoto !== null;
     if (isModalOpen) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlHeight = document.documentElement.style.height;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyHeight = document.body.style.height;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
-      
+      document.body.style.height = '100%';
+
       return () => {
-        document.body.style.overflow = '';
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.height = originalHtmlHeight;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.height = originalBodyHeight;
       };
     }
   }, [open, importOpen, regOpen, enlargedPhoto]);
@@ -556,7 +570,7 @@ export default function PlayersPage() {
 
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); setForm({ name: '', village: '', mobile: '', playing_style: '', age: '', crickheroes_url: '' }); } }}>
             <DialogTrigger render={<Button className="w-full md:w-auto bg-gold hover:bg-gold-dark text-navy"><Plus className="w-4 h-4 mr-1" /> Add Player</Button>} />
-            <DialogContent className="glass border-gold/10">
+            <DialogContent className="glass border-gold/10 max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Player</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="bg-navy-lighter/50" /></div>

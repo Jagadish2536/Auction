@@ -125,12 +125,26 @@ function HomePageContent() {
 
   // Lock body scroll on mobile/iOS when any modal is open
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (!isMobile) return;
+
     const isModalOpen = pubModalType !== null || enlargedPhoto !== null;
     if (isModalOpen) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlHeight = document.documentElement.style.height;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyHeight = document.body.style.height;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
-      
+      document.body.style.height = '100%';
+
       return () => {
-        document.body.style.overflow = '';
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.height = originalHtmlHeight;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.height = originalBodyHeight;
       };
     }
   }, [pubModalType, enlargedPhoto]);
@@ -782,7 +796,7 @@ function HomePageContent() {
 
         {/* Player Detail Modal */}
         <Dialog open={pubModalType !== null && pubModalType !== 'teams'} onOpenChange={(o) => { if (!o) { setPubModalType(null); setPubSearchQuery(''); } }}>
-          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full">
+          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-gradient-gold flex items-center gap-2">
                 {pubModalType === 'sold' && <UserCheck className="w-5 h-5 text-green-400" />}
@@ -808,11 +822,11 @@ function HomePageContent() {
                 <VirtualPlayerList<Player>
                   items={getPubFilteredPlayers()}
                   rowHeight={80}
-                  maxHeight="60vh"
+                  maxHeight="100%"
                   keyExtractor={(p) => p.id}
                   emptyMessage="No players in this category"
                   emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
-                  className="md:hidden pr-1 mt-2"
+                  className="md:hidden pr-1 mt-2 flex-1 min-h-0"
                   renderRow={(p) => (
                     <div className="p-3 rounded-xl bg-navy-lighter/20 border border-gold/10 flex items-center justify-between gap-3 mb-2.5">
                       <div className="flex items-center gap-3">
@@ -867,7 +881,7 @@ function HomePageContent() {
 
                 {/* Desktop View: Full horizontal table */}
                 <div
-                  className="hidden md:block overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain"
+                  className="hidden md:block overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain flex-1 min-h-0"
                   style={{ WebkitOverflowScrolling: 'touch' }}
                 >
                   <Table className="min-w-[650px] w-full">
@@ -934,7 +948,7 @@ function HomePageContent() {
 
         {/* Teams Detail Modal */}
         <Dialog open={pubModalType === 'teams'} onOpenChange={(o) => { if (!o) setPubModalType(null); }}>
-          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full">
+          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-gradient-gold flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-blue-400" />
@@ -942,7 +956,7 @@ function HomePageContent() {
               </DialogTitle>
             </DialogHeader>
             <div
-              className="overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain"
+              className="overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain flex-1 min-h-0"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {pubTeams.length > 0 ? (

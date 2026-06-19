@@ -37,12 +37,26 @@ export default function DashboardPage() {
 
   // Lock body scroll on mobile/iOS when any modal is open
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (!isMobile) return;
+
     const isModalOpen = modalType !== null;
     if (isModalOpen) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlHeight = document.documentElement.style.height;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyHeight = document.body.style.height;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
-      
+      document.body.style.height = '100%';
+
       return () => {
-        document.body.style.overflow = '';
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.height = originalHtmlHeight;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.height = originalBodyHeight;
       };
     }
   }, [modalType]);
@@ -230,9 +244,8 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Player Detail Modal */}
       <Dialog open={modalType !== null && modalType !== 'teams'} onOpenChange={(o) => { if (!o) setModalType(null); }}>
-        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full">
+        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-gradient-gold flex items-center gap-2">
               {modalType === 'sold' && <UserCheck className="w-5 h-5 text-green-400" />}
@@ -245,10 +258,11 @@ export default function DashboardPage() {
           <VirtualPlayerList<Player>
             items={getFilteredPlayers}
             rowHeight={56}
-            maxHeight="60vh"
+            maxHeight="100%"
             keyExtractor={(p) => p.id}
             emptyMessage="No players in this category"
             emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
+            className="flex-1 min-h-0"
             renderRow={(p) => (
               <div className="flex items-center w-full px-4 py-2 border-b border-border/20 hover:bg-navy-lighter/30">
                 <div className="flex items-center gap-2.5 min-w-[180px]">
@@ -286,9 +300,8 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Teams Detail Modal */}
       <Dialog open={modalType === 'teams'} onOpenChange={(o) => { if (!o) setModalType(null); }}>
-        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full">
+        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-gradient-gold flex items-center gap-2">
               <Trophy className="w-5 h-5 text-purple-400" />
@@ -298,10 +311,11 @@ export default function DashboardPage() {
           <VirtualPlayerList<Team>
             items={teams}
             rowHeight={56}
-            maxHeight="60vh"
+            maxHeight="100%"
             keyExtractor={(t) => t.id}
             emptyMessage="No teams created yet"
             emptyIcon={<Trophy className="w-12 h-12 text-gold/20 mx-auto" />}
+            className="flex-1 min-h-0"
             renderRow={(t) => {
               const spentPct = t.budget > 0 ? ((t.budget - t.remaining_budget) / t.budget) * 100 : 0;
               return (

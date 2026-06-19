@@ -54,12 +54,26 @@ export default function LivePage() {
 
   // Lock body scroll on mobile/iOS when any modal is open
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (!isMobile) return;
+
     const isModalOpen = activeFilter !== null || selectedSquadPlayer !== null || enlargedPhoto !== null;
     if (isModalOpen) {
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalHtmlHeight = document.documentElement.style.height;
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyHeight = document.body.style.height;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
       document.body.style.overflow = 'hidden';
-      
+      document.body.style.height = '100%';
+
       return () => {
-        document.body.style.overflow = '';
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.documentElement.style.height = originalHtmlHeight;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.height = originalBodyHeight;
       };
     }
   }, [activeFilter, selectedSquadPlayer, enlargedPhoto]);
@@ -726,7 +740,7 @@ export default function LivePage() {
 
       {/* Stats Detail Dialog */}
       <Dialog open={activeFilter !== null} onOpenChange={(open) => { if (!open) { setActiveFilter(null); setSearchQuery(''); } }}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[85vw] md:max-w-2xl w-full bg-navy border border-gold/10 text-foreground">
+        <DialogContent className="max-w-[95vw] sm:max-w-[85vw] md:max-w-2xl w-full bg-navy border border-gold/10 text-foreground max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gradient-gold capitalize">
               {activeFilter === 'left' ? 'Remaining' : activeFilter} Players ({filteredPlayers.length})
@@ -746,11 +760,11 @@ export default function LivePage() {
           <VirtualPlayerList<Player>
             items={filteredPlayers}
             rowHeight={80}
-            maxHeight="60vh"
+            maxHeight="100%"
             keyExtractor={(p) => p.id}
             emptyMessage="No players found"
             emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
-            className="pr-4 mt-4"
+            className="pr-4 mt-4 flex-1 min-h-0"
             renderRow={(p) => (
               <div className="flex items-center gap-4 p-3 rounded-xl bg-navy-lighter/30 border border-border/50">
                 <div className="w-12 h-12 rounded-lg bg-navy-lighter overflow-hidden shrink-0">
