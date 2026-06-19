@@ -98,8 +98,6 @@ function VirtualPlayerListInner<T>({
         maxHeight,
         WebkitOverflowScrolling: 'touch',
       }}
-      onTouchMove={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
     >
       {/* Top spacer */}
       {offsetY > 0 && <div style={{ height: offsetY }} />}

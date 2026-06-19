@@ -38,9 +38,9 @@ def save_upload(file, subfolder='photos'):
     filename = f"{uuid.uuid4().hex}.{ext}"
     key = f"uploads/{subfolder}/{filename}"
 
-    # Try to optimize/compress image if subfolder is photos, teams, sponsors, or tournaments
+    # Try to optimize/compress image if subfolder is players, team_logos, sponsors, or logos
     optimized_data = None
-    if subfolder in ('photos', 'teams', 'sponsors', 'tournaments'):
+    if subfolder in ('players', 'team_logos', 'sponsors', 'logos'):
         try:
             from PIL import Image
             import io

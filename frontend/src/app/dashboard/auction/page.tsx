@@ -705,9 +705,16 @@ export default function AuctionPage() {
 
       {/* Photo Enlarge Dialog */}
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
-        <DialogContent className="glass border-gold/10 p-2 overflow-hidden max-w-[95vw] sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw] w-fit bg-navy/95 flex items-center justify-center">
+        <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
           {enlargedPhoto && (
-            <img src={enlargedPhoto} alt="Player Photo" className="max-w-full h-auto max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+            <div className="flex items-center justify-center w-full h-full max-h-[80vh] overflow-hidden">
+              <img
+                src={enlargedPhoto}
+                alt="Player Photo"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                style={{ objectFit: 'contain' }}
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>
