@@ -789,7 +789,10 @@ function HomePageContent() {
                 className="w-full pl-9 pr-4 py-2 bg-navy-lighter/50 border border-gold/10 rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/30 focus:ring-1 focus:ring-gold/20 transition-all"
               />
             </div>
-            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+            <div
+              className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {getPubFilteredPlayers().length > 0 ? (
                 <Table className="min-w-[650px] w-full">
                   <TableHeader>
@@ -861,7 +864,10 @@ function HomePageContent() {
                 All Teams ({pubTeams.length})
               </DialogTitle>
             </DialogHeader>
-            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+            <div
+              className="overflow-x-auto overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {pubTeams.length > 0 ? (
                 <Table className="min-w-[650px] w-full">
                   <TableHeader>
@@ -1214,7 +1220,10 @@ function HomePageContent() {
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
         <DialogContent className="glass border-gold/10 p-2 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh]">
           {enlargedPhoto && (
-            <div className="overflow-auto max-h-[85vh] w-full flex justify-start sm:justify-center items-start sm:items-center">
+            <div
+              className="overflow-auto max-h-[85vh] w-full flex justify-start sm:justify-center items-start sm:items-center overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               <img
                 src={enlargedPhoto}
                 alt="Enlarged View"

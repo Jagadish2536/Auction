@@ -862,7 +862,10 @@ export default function LivePage() {
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
         <DialogContent className="glass border-gold/10 p-2 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh]">
           {enlargedPhoto && (
-            <div className="overflow-auto max-h-[85vh] w-full flex justify-start sm:justify-center items-start sm:items-center">
+            <div
+              className="overflow-auto max-h-[85vh] w-full flex justify-start sm:justify-center items-start sm:items-center overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               <img
                 src={enlargedPhoto}
                 alt="Enlarged View"
