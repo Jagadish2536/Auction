@@ -83,6 +83,10 @@ def get_live_state(tournament_id):
     if cached:
         return cached
 
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
+
     auction_state = AuctionState.query.filter_by(tournament_id=tournament_id).first()
     if not auction_state:
         return jsonify({'error': 'Auction not found'}), 404
@@ -123,6 +127,11 @@ def get_public_players(tournament_id):
     cached = cache.get(cache_key)
     if cached:
         return cached
+
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
+
     players = Player.query.filter(Player.tournament_id == tournament_id, Player.status != 'pending').options(
         joinedload(Player.sold_team)
     ).order_by(Player.name).all()
@@ -136,7 +145,9 @@ def get_public_players(tournament_id):
 @public_bp.route('/tournament/<int:tournament_id>', methods=['GET'])
 def get_public_tournament_by_id(tournament_id):
     """Get tournament details by ID for public display."""
-    tournament = Tournament.query.get_or_404(tournament_id)
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
     teams = Team.query.filter_by(tournament_id=tournament.id).all()
     total_players = Player.query.filter(Player.tournament_id == tournament.id, Player.status != 'pending').count()
     sold_players = Player.query.filter_by(tournament_id=tournament.id, status='sold').count()
@@ -176,7 +187,9 @@ def get_public_tournament_by_id(tournament_id):
 @public_bp.route('/tournament/<int:tournament_id>/register-player', methods=['POST'])
 def register_player_public(tournament_id):
     """Allow players to register themselves for a tournament via shared link."""
-    tournament = Tournament.query.get_or_404(tournament_id)
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
     if not tournament.registration_open:
         return jsonify({'error': 'Registration for this tournament is closed or expired.'}), 403
 
@@ -262,5 +275,36 @@ def get_registration_tournament():
     if not tournament:
         return jsonify({'tournament': None}), 200
     return jsonify({'tournament': tournament.to_dict()}), 200
+
+
+@public_bp.route('/tournament/<int:tournament_id>/teams', methods=['GET'])
+def get_public_teams(tournament_id):
+    """Get all teams for a specific tournament."""
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
+    teams = Team.query.filter_by(tournament_id=tournament_id).all()
+    return jsonify({'teams': [t.to_dict() for t in teams]}), 200
+
+
+@public_bp.route('/tournament/<int:tournament_id>/stats', methods=['GET'])
+def get_public_stats(tournament_id):
+    """Get registration and status stats for a tournament."""
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
+    total_players = Player.query.filter(Player.tournament_id == tournament_id, Player.status != 'pending').count()
+    sold_players = Player.query.filter_by(tournament_id=tournament_id, status='sold').count()
+    unsold_players = Player.query.filter_by(tournament_id=tournament_id, status='unsold').count()
+    teams_count = Team.query.filter_by(tournament_id=tournament_id).count()
+    return jsonify({
+        'stats': {
+            'total_teams': teams_count,
+            'total_players': total_players,
+            'sold_players': sold_players,
+            'unsold_players': unsold_players,
+        }
+    }), 200
+
 
 

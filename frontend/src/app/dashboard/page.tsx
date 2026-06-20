@@ -12,6 +12,7 @@ import { Trophy, Users, UserCheck, UserX, TrendingUp, DollarSign, BarChart3, Tar
 import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
 import VirtualPlayerList from '@/components/ui/VirtualPlayerList';
 import { useAnalytics, usePlayers, useTeams, useTournament, useSocketInvalidation } from '@/lib/queries';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 type ModalType = 'total' | 'sold' | 'unsold' | 'available' | 'teams' | null;
 
@@ -36,30 +37,7 @@ export default function DashboardPage() {
   }, []);
 
   // Lock body scroll on mobile/iOS when any modal is open
-  useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    if (!isMobile) return;
-
-    const isModalOpen = modalType !== null;
-    if (isModalOpen) {
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      const originalHtmlHeight = document.documentElement.style.height;
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalBodyHeight = document.body.style.height;
-
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.height = '100%';
-      document.body.style.overflow = 'hidden';
-      document.body.style.height = '100%';
-
-      return () => {
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.height = originalHtmlHeight;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.height = originalBodyHeight;
-      };
-    }
-  }, [modalType]);
+  useBodyScrollLock(modalType !== null);
 
   // React Query hooks — cached, deduplicated, auto-invalidated
   const { data: activeTournament } = useTournament(tournamentId);
@@ -245,7 +223,7 @@ export default function DashboardPage() {
       )}
 
       <Dialog open={modalType !== null && modalType !== 'teams'} onOpenChange={(o) => { if (!o) setModalType(null); }}>
-        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent disableAutoFocus className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90dvh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-gradient-gold flex items-center gap-2">
               {modalType === 'sold' && <UserCheck className="w-5 h-5 text-green-400" />}
@@ -258,7 +236,7 @@ export default function DashboardPage() {
           <VirtualPlayerList<Player>
             items={getFilteredPlayers}
             rowHeight={56}
-            maxHeight="60vh"
+            maxHeight="60dvh"
             keyExtractor={(p) => p.id}
             emptyMessage="No players in this category"
             emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
@@ -301,7 +279,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Dialog open={modalType === 'teams'} onOpenChange={(o) => { if (!o) setModalType(null); }}>
-        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90dvh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-gradient-gold flex items-center gap-2">
               <Trophy className="w-5 h-5 text-purple-400" />
@@ -311,7 +289,7 @@ export default function DashboardPage() {
           <VirtualPlayerList<Team>
             items={teams}
             rowHeight={56}
-            maxHeight="60vh"
+            maxHeight="60dvh"
             keyExtractor={(t) => t.id}
             emptyMessage="No teams created yet"
             emptyIcon={<Trophy className="w-12 h-12 text-gold/20 mx-auto" />}

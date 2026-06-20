@@ -16,6 +16,7 @@ import { Plus, Edit, Trash2, Upload, UserCircle, Search, ExternalLink, Link as L
 import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
 import { usePlayers, usePendingPlayers, useTournament, useSocketInvalidation } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { queryKeys } from '@/lib/queries';
 
 const statusColors: Record<string, string> = {
@@ -104,7 +105,7 @@ const PlayerRow = memo(function PlayerRow({
 });
 
 // Virtual scroll window — renders only visible rows + buffer
-const VIRTUAL_ROW_HEIGHT = 52;
+const VIRTUAL_ROW_HEIGHT = 57;
 const BUFFER_ROWS = 15;
 
 function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
@@ -120,7 +121,12 @@ function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    setContainerHeight(el.clientHeight);
+    
+    const measure = () => {
+      setContainerHeight(el.clientHeight);
+    };
+
+    measure();
     const onScroll = () => setScrollTop(el.scrollTop);
     el.addEventListener('scroll', onScroll, { passive: true });
     
@@ -131,8 +137,21 @@ function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
     });
     resizeObserver.observe(el);
 
+    // Dynamic viewport and rotation listeners for iOS/mobile bars
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', measure);
+    }
+
     return () => {
       el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      if (vv) {
+        vv.removeEventListener('resize', measure);
+      }
       resizeObserver.disconnect();
     };
   }, []);
@@ -146,10 +165,13 @@ function VirtualTable({ rows, onEdit, onDelete, onEnlarge }: {
   return (
     <div
       ref={containerRef}
-      className="overflow-auto overscroll-contain"
+      className="overflow-y-auto overscroll-contain"
       style={{
-        maxHeight: '70vh',
+        maxHeight: '70dvh',
+        overflowY: 'auto',
+        touchAction: 'pan-y',
         WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
       }}
     >
       <table className="w-full min-w-[500px] text-sm">
@@ -320,30 +342,7 @@ export default function PlayersPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Lock body scroll on mobile/iOS when any modal is open
-  useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    if (!isMobile) return;
-
-    const isModalOpen = open || importOpen || regOpen || enlargedPhoto !== null;
-    if (isModalOpen) {
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      const originalHtmlHeight = document.documentElement.style.height;
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalBodyHeight = document.body.style.height;
-
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.height = '100%';
-      document.body.style.overflow = 'hidden';
-      document.body.style.height = '100%';
-
-      return () => {
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.height = originalHtmlHeight;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.height = originalBodyHeight;
-      };
-    }
-  }, [open, importOpen, regOpen, enlargedPhoto]);
+  useBodyScrollLock(open || importOpen || regOpen || enlargedPhoto !== null);
 
   const regUrl = typeof window !== 'undefined' ? `${window.location.origin}/register${tournament?.registration_code ? `?code=${tournament.registration_code}` : ''}` : '';
 

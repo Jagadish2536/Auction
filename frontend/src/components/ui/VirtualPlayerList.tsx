@@ -22,7 +22,7 @@ function VirtualPlayerListInner<T>({
   items,
   rowHeight = 72,
   bufferRows = 10,
-  maxHeight = '60vh',
+  maxHeight = '60dvh',
   renderRow,
   keyExtractor,
   emptyMessage = 'No items found',
@@ -37,25 +37,74 @@ function VirtualPlayerListInner<T>({
     const el = containerRef.current;
     if (!el) return;
 
-    // Measure initial height
-    setContainerHeight(el.clientHeight);
+    // Helper to measure and update height
+    const measureHeight = () => {
+      const height = el.clientHeight;
+      if (height > 0) {
+        setContainerHeight(height);
+      }
+    };
 
+    // 1. Initial measurement
+    measureHeight();
+
+    // 2. Listen to scroll events
     const onScroll = () => {
       setScrollTop(el.scrollTop);
     };
-
     el.addEventListener('scroll', onScroll, { passive: true });
 
+    // 3. ResizeObserver for layout changes
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setContainerHeight(entry.target.clientHeight);
+        const height = entry.target.clientHeight;
+        if (height > 0) {
+          setContainerHeight(height);
+        }
       }
     });
     resizeObserver.observe(el);
 
+    // 4. Recalculate after dialog animation/transition completes
+    const popup = el.closest('[role="dialog"]') || el.closest('[data-slot="dialog-content"]');
+    if (popup) {
+      popup.addEventListener('animationend', measureHeight);
+      popup.addEventListener('transitionend', measureHeight);
+    }
+
+    // 5. Fallback timeouts to measure height as the dialog animates
+    const timeoutIds = [50, 100, 200, 400, 800].map(delay =>
+      setTimeout(measureHeight, delay)
+    );
+
+    // 6. iOS Safari touchstart hook: recalculate on first touch
+    const handleTouchStart = () => {
+      measureHeight();
+    };
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+
+    // 7. Window, orientation, and visualViewport resize hooks for iOS bar transitions
+    window.addEventListener('resize', measureHeight);
+    window.addEventListener('orientationchange', measureHeight);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', measureHeight);
+    }
+
     return () => {
       el.removeEventListener('scroll', onScroll);
+      el.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('resize', measureHeight);
+      window.removeEventListener('orientationchange', measureHeight);
+      if (vv) {
+        vv.removeEventListener('resize', measureHeight);
+      }
       resizeObserver.disconnect();
+      if (popup) {
+        popup.removeEventListener('animationend', measureHeight);
+        popup.removeEventListener('transitionend', measureHeight);
+      }
+      timeoutIds.forEach(clearTimeout);
     };
   }, []);
 
@@ -93,10 +142,13 @@ function VirtualPlayerListInner<T>({
   return (
     <div
       ref={containerRef}
-      className={`overflow-auto overscroll-contain ${className}`}
+      className={`overflow-y-auto overscroll-contain ${className}`}
       style={{
         maxHeight,
+        overflowY: 'auto',
+        touchAction: 'pan-y',
         WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
       }}
     >
       {/* Top spacer */}

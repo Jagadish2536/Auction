@@ -8,12 +8,14 @@ import { getSocket } from '@/lib/socket';
 import { getImageUrl } from '@/lib/api';
 import { AuctionFullState, Player, Tournament } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Radio, Trophy, Users, UserCircle, Gavel, Timer, TrendingUp, Home, ArrowLeft, Heart, Search } from 'lucide-react';
+import { Radio, Trophy, Users, UserCircle, Gavel, Timer, TrendingUp, Home, ArrowLeft, Heart, Search, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
 import VirtualPlayerList from '@/components/ui/VirtualPlayerList';
 import { usePublicPlayers } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { queryKeys } from '@/lib/queries';
 import { prefetchPlayerImages, prefetchTeamImages } from '@/lib/imageCache';
 
@@ -36,6 +38,7 @@ export default function LivePage() {
   const [timerValue, setTimerValue] = useState(30);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [sponsors, setSponsors] = useState<any[]>([]);
+  const [tournamentError, setTournamentError] = useState<string | null>(null);
 
   // Modal details & all players state
   const queryClient = useQueryClient();
@@ -53,30 +56,7 @@ export default function LivePage() {
   }, [isAudioEnabled]);
 
   // Lock body scroll on mobile/iOS when any modal is open
-  useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    if (!isMobile) return;
-
-    const isModalOpen = activeFilter !== null || selectedSquadPlayer !== null || enlargedPhoto !== null;
-    if (isModalOpen) {
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      const originalHtmlHeight = document.documentElement.style.height;
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalBodyHeight = document.body.style.height;
-
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.height = '100%';
-      document.body.style.overflow = 'hidden';
-      document.body.style.height = '100%';
-
-      return () => {
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.height = originalHtmlHeight;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.height = originalBodyHeight;
-      };
-    }
-  }, [activeFilter, selectedSquadPlayer, enlargedPhoto]);
+  useBodyScrollLock(activeFilter !== null || selectedSquadPlayer !== null || enlargedPhoto !== null);
 
   const speakMessage = (text: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -150,10 +130,19 @@ export default function LivePage() {
     } else {
       // Get tournament ID from public API if none provided in URL
       fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/public/tournament`)
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error('No active tournament');
+          return r.json();
+        })
         .then((d) => {
-          if (d.tournament) setTournamentId(d.tournament.id);
-        }).catch(() => {});
+          if (d.tournament) {
+            setTournamentId(d.tournament.id);
+          } else {
+            setTournamentError('Tournament Not Found');
+          }
+        }).catch(() => {
+          setTournamentError('Tournament Not Found');
+        });
     }
   }, []);
 
@@ -161,11 +150,28 @@ export default function LivePage() {
     if (!tournamentId) return;
     const fetchT = () => {
       fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/public/tournament/${tournamentId}`)
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error('Tournament not found');
+          return r.json();
+        })
         .then((d) => {
-          if (d.tournament) setTournament(d.tournament);
+          if (d.success === false || !d.tournament) throw new Error('Tournament not found');
+          setTournament(d.tournament);
           if (d.sponsors) setSponsors(d.sponsors);
-        }).catch(() => {});
+          setTournamentError(null);
+        }).catch(() => {
+          setTournament(null);
+          setSponsors([]);
+          try {
+            queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] });
+            queryClient.invalidateQueries({ queryKey: ['players', tournamentId] });
+            queryClient.invalidateQueries({ queryKey: ['teams', tournamentId] });
+            queryClient.invalidateQueries({ queryKey: ['stats', tournamentId] });
+          } catch (e) {
+            console.error(e);
+          }
+          setTournamentError('This tournament does not exist or has been deleted.');
+        });
     };
     fetchT();
   }, [tournamentId]);
@@ -185,7 +191,7 @@ export default function LivePage() {
   }, [state?.teams]);
 
   useEffect(() => {
-    if (!tournamentId) return;
+    if (!tournamentId || !tournament || tournamentError) return;
     
     const socket = getSocket();
 
@@ -231,7 +237,7 @@ export default function LivePage() {
       socket.off('auction:timer');
       socket.off('auction:viewer_count');
     };
-  }, [tournamentId]);
+  }, [tournamentId, tournament, tournamentError]);
 
   const auction = state?.auction;
   const player = auction?.current_player;
@@ -261,6 +267,36 @@ export default function LivePage() {
       return true;
     });
   }, [players, activeFilter, searchQuery]);
+
+  if (tournamentError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-md w-full bg-navy/40 border border-gold/10 rounded-2xl p-8 text-center glass shadow-xl">
+          <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4 animate-bounce" />
+          <h2 className="text-2xl font-bold text-gradient-gold mb-2">Tournament Not Found</h2>
+          <p className="text-muted-foreground mb-6">
+            {tournamentError}
+          </p>
+          <Link href="/">
+            <Button className="w-full bg-gold hover:bg-gold-dark text-navy font-semibold py-2.5 rounded-xl transition-all shadow-md glow-gold-sm">
+              Return to Homepage
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Gavel className="w-12 h-12 text-gold animate-pulse" />
+          <p className="text-muted-foreground">Loading Lakshya Live...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -740,7 +776,10 @@ export default function LivePage() {
 
       {/* Stats Detail Dialog */}
       <Dialog open={activeFilter !== null} onOpenChange={(open) => { if (!open) { setActiveFilter(null); setSearchQuery(''); } }}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[85vw] md:max-w-2xl w-full bg-navy border border-gold/10 text-foreground max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent 
+          disableAutoFocus
+          className="max-w-[95vw] sm:max-w-[85vw] md:max-w-2xl w-full bg-navy border border-gold/10 text-foreground max-h-[90dvh] flex flex-col overflow-hidden"
+        >
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gradient-gold capitalize">
               {activeFilter === 'left' ? 'Remaining' : activeFilter} Players ({filteredPlayers.length})
@@ -760,7 +799,7 @@ export default function LivePage() {
           <VirtualPlayerList<Player>
             items={filteredPlayers}
             rowHeight={80}
-            maxHeight="60vh"
+            maxHeight="60dvh"
             keyExtractor={(p) => p.id}
             emptyMessage="No players found"
             emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
@@ -886,14 +925,14 @@ export default function LivePage() {
 
       {/* Photo Enlarge Dialog */}
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
-        <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
+        <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90dvh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
           {enlargedPhoto && (
-            <div className="flex items-center justify-center w-full h-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-center w-full h-full max-h-[80dvh] overflow-hidden">
               <img
                 src={enlargedPhoto}
                 alt="Enlarged View"
                 loading="eager"
-                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                className="max-w-full max-h-[80dvh] object-contain rounded-lg shadow-2xl"
                 style={{ objectFit: 'contain' }}
                 onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
               />

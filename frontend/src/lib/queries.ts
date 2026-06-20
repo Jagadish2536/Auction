@@ -115,6 +115,9 @@ export function usePublicPlayers(tournamentId: number | null | undefined) {
     queryKey: queryKeys.publicPlayers(tournamentId!),
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/api/public/tournament/${tournamentId}/players`);
+      if (!res.ok) {
+        throw new Error('Tournament not found');
+      }
       const data = await res.json();
       const players: Player[] = data.players || [];
       prefetchPlayerImages(players);
@@ -124,6 +127,7 @@ export function usePublicPlayers(tournamentId: number | null | undefined) {
     staleTime: 30_000,       // 30 seconds for public data
     gcTime: 5 * 60_000,
     placeholderData: (prev) => prev,
+    retry: false,            // Don't retry permanently missing resources
   });
 }
 
@@ -133,12 +137,16 @@ export function usePublicTournament(tournamentId: number | null | undefined) {
     queryKey: queryKeys.publicTournament(tournamentId!),
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/api/public/tournament/${tournamentId}`);
+      if (!res.ok) {
+        throw new Error('Tournament not found');
+      }
       return await res.json();
     },
     enabled: !!tournamentId,
     staleTime: 15_000,
     gcTime: 5 * 60_000,
     placeholderData: (prev) => prev,
+    retry: false,            // Don't retry permanently missing resources
   });
 }
 

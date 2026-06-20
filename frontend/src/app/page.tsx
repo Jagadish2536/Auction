@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/lib/store';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 const statusConfig: Record<string, { label: string; color: string; pulse: boolean }> = {
   not_started: { label: 'Not Started', color: 'bg-muted text-muted-foreground', pulse: false },
@@ -43,6 +45,7 @@ function ensureUrl(url: string | null | undefined): string {
 
 function HomePageContent() {
   const { user, checkAuth, isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [data, setData] = useState<PublicTournamentData | null>(null);
@@ -113,9 +116,30 @@ function HomePageContent() {
     if (!selectedTid) return;
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     fetch(`${apiBase}/api/public/tournament/${selectedTid}`)
-      .then((res) => res.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((res) => {
+        if (!res.ok) throw new Error('Tournament not found');
+        return res.json();
+      })
+      .then((d) => {
+        if (d.success === false || !d.tournament) throw new Error('Tournament not found');
+        setData(d);
+        setLoading(false);
+      })
+      .catch(() => {
+        setData(null);
+        setPubPlayers([]);
+        setLoading(false);
+        try {
+          queryClient.invalidateQueries({ queryKey: ['tournament', selectedTid] });
+          queryClient.invalidateQueries({ queryKey: ['players', selectedTid] });
+          queryClient.invalidateQueries({ queryKey: ['teams', selectedTid] });
+          queryClient.invalidateQueries({ queryKey: ['stats', selectedTid] });
+        } catch (e) {
+          console.error(e);
+        }
+        window.history.replaceState({}, '', '/');
+        window.location.href = '/';
+      });
   };
 
   useEffect(() => {
@@ -124,30 +148,7 @@ function HomePageContent() {
   }, [checkAuth]);
 
   // Lock body scroll on mobile/iOS when any modal is open
-  useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    if (!isMobile) return;
-
-    const isModalOpen = pubModalType !== null || enlargedPhoto !== null;
-    if (isModalOpen) {
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      const originalHtmlHeight = document.documentElement.style.height;
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalBodyHeight = document.body.style.height;
-
-      document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.height = '100%';
-      document.body.style.overflow = 'hidden';
-      document.body.style.height = '100%';
-
-      return () => {
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.documentElement.style.height = originalHtmlHeight;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.height = originalBodyHeight;
-      };
-    }
-  }, [pubModalType, enlargedPhoto]);
+  useBodyScrollLock(pubModalType !== null || enlargedPhoto !== null);
 
   useEffect(() => {
     if (selectedTid) {
@@ -155,7 +156,10 @@ function HomePageContent() {
       // Pre-fetch players to open modal instantly
       const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       fetch(`${apiBase}/api/public/tournament/${selectedTid}/players`)
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error('Tournament not found');
+          return r.json();
+        })
         .then(d => setPubPlayers(d.players || []))
         .catch(() => {});
       const interval = setInterval(fetchTournamentData, 5000);
@@ -210,7 +214,7 @@ function HomePageContent() {
     socket.on('player:change', handlePlayerChange);
     socket.on('team:change', handleTeamChange);
 
-    if (selectedTid) {
+    if (selectedTid && data?.tournament) {
       socket.emit('join_auction', { tournament_id: selectedTid });
       
       const handleAuctionState = () => {
@@ -233,7 +237,7 @@ function HomePageContent() {
       socket.off('player:change', handlePlayerChange);
       socket.off('team:change', handleTeamChange);
     };
-  }, [selectedTid]);
+  }, [selectedTid, data?.tournament]);
 
   // Countdown timer for individual tournament view
   useEffect(() => {
@@ -796,7 +800,10 @@ function HomePageContent() {
 
         {/* Player Detail Modal */}
         <Dialog open={pubModalType !== null && pubModalType !== 'teams'} onOpenChange={(o) => { if (!o) { setPubModalType(null); setPubSearchQuery(''); } }}>
-          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogContent 
+            disableAutoFocus
+            className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90dvh] flex flex-col overflow-hidden"
+          >
             <DialogHeader>
               <DialogTitle className="text-gradient-gold flex items-center gap-2">
                 {pubModalType === 'sold' && <UserCheck className="w-5 h-5 text-green-400" />}
@@ -822,13 +829,13 @@ function HomePageContent() {
                 <VirtualPlayerList<Player>
                   items={getPubFilteredPlayers()}
                   rowHeight={80}
-                  maxHeight="60vh"
+                  maxHeight="60dvh"
                   keyExtractor={(p) => p.id}
                   emptyMessage="No players in this category"
                   emptyIcon={<UserCircle className="w-12 h-12 text-gold/20 mx-auto" />}
                   className="md:hidden pr-1 mt-2 flex-1 min-h-0"
                   renderRow={(p) => (
-                    <div className="p-3 rounded-xl bg-navy-lighter/20 border border-gold/10 flex items-center justify-between gap-3 mb-2.5">
+                    <div className="p-3 rounded-xl bg-navy-lighter/20 border border-gold/10 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-navy-lighter overflow-hidden shrink-0 border border-gold/10">
                           {p.photo ? (
@@ -881,7 +888,7 @@ function HomePageContent() {
 
                 {/* Desktop View: Full horizontal table */}
                 <div
-                  className="hidden md:block overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain flex-1 min-h-0"
+                  className="hidden md:block overflow-y-auto max-h-[60dvh] pr-1 custom-scrollbar overscroll-contain flex-1 min-h-0"
                   style={{ WebkitOverflowScrolling: 'touch' }}
                 >
                   <Table className="min-w-[650px] w-full">
@@ -948,7 +955,7 @@ function HomePageContent() {
 
         {/* Teams Detail Modal */}
         <Dialog open={pubModalType === 'teams'} onOpenChange={(o) => { if (!o) setPubModalType(null); }}>
-          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogContent className="glass border-gold/10 max-w-[95vw] sm:max-w-[85vw] md:max-w-3xl w-full max-h-[90dvh] flex flex-col overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-gradient-gold flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-blue-400" />
@@ -956,7 +963,7 @@ function HomePageContent() {
               </DialogTitle>
             </DialogHeader>
             <div
-              className="overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar overscroll-contain flex-1 min-h-0"
+              className="overflow-y-auto max-h-[60dvh] pr-1 custom-scrollbar overscroll-contain flex-1 min-h-0"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {pubTeams.length > 0 ? (
@@ -1079,14 +1086,14 @@ function HomePageContent() {
 
         {/* Photo Enlarge Dialog */}
         <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
-          <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
+          <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90dvh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
             {enlargedPhoto && (
-              <div className="flex items-center justify-center w-full h-full max-h-[80vh] overflow-hidden">
+              <div className="flex items-center justify-center w-full h-full max-h-[80dvh] overflow-hidden">
                 <img
                   src={enlargedPhoto}
                   alt="Enlarged View"
                   loading="eager"
-                  className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-[80dvh] object-contain rounded-lg shadow-2xl"
                   style={{ objectFit: 'contain' }}
                   onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
                 />
@@ -1372,14 +1379,14 @@ function HomePageContent() {
         </div>
       </footer>
       <Dialog open={!!enlargedPhoto} onOpenChange={(o) => { if (!o) setEnlargedPhoto(null); }}>
-        <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90vh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
+        <DialogContent className="glass border-gold/10 p-1 overflow-hidden w-[95vw] max-w-[95vw] sm:max-w-[85vw] bg-navy/95 max-h-[90dvh] flex items-center justify-center [&>button]:text-white [&>button]:bg-navy/80 [&>button]:rounded-full [&>button]:p-1">
           {enlargedPhoto && (
-            <div className="flex items-center justify-center w-full h-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-center w-full h-full max-h-[80dvh] overflow-hidden">
               <img
                 src={enlargedPhoto}
                 alt="Enlarged View"
                 loading="eager"
-                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                className="max-w-full max-h-[80dvh] object-contain rounded-lg shadow-2xl"
                 style={{ objectFit: 'contain' }}
                 onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PLAYER_PHOTO; }}
               />
