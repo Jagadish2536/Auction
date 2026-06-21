@@ -105,9 +105,9 @@ def _export_players_csv(players, tournament):
     import csv
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Name', 'Village', 'Mobile', 'Playing Style', 'Age', 'Base Price', 'Status', 'Sold Team', 'Sold Price'])
-    for p in players:
-        writer.writerow([p.name, p.village, p.mobile, p.playing_style, p.age, p.base_price, p.status,
+    writer.writerow(['S.No', 'Name', 'Village', 'Mobile', 'Playing Style', 'Age', 'Base Price', 'Status', 'Sold Team', 'Sold Price'])
+    for idx, p in enumerate(players):
+        writer.writerow([idx + 1, p.name, p.village, p.mobile, p.playing_style, p.age, p.base_price, p.status,
                          p.sold_team.name if p.sold_team else '', p.sold_price or ''])
     output.seek(0)
     return send_file(io.BytesIO(output.getvalue().encode('utf-8')),
@@ -137,9 +137,9 @@ def _export_auction_csv(sold_players, tournament):
     import csv
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Player', 'Village', 'Playing Style', 'Base Price', 'Sold Price', 'Sold Team', 'Sold At'])
-    for p in sold_players:
-        writer.writerow([p.name, p.village, p.playing_style, p.base_price, p.sold_price,
+    writer.writerow(['S.No', 'Player', 'Village', 'Playing Style', 'Base Price', 'Sold Price', 'Sold Team', 'Sold At'])
+    for idx, p in enumerate(sold_players):
+        writer.writerow([idx + 1, p.name, p.village, p.playing_style, p.base_price, p.sold_price,
                          p.sold_team.name if p.sold_team else '', p.sold_at])
     output.seek(0)
     return send_file(io.BytesIO(output.getvalue().encode('utf-8')),
@@ -154,9 +154,9 @@ def _export_players_excel(players, tournament):
     wb = Workbook()
     ws = wb.active
     ws.title = 'Players'
-    ws.append(['Name', 'Village', 'Mobile', 'Playing Style', 'Age', 'Base Price', 'Status', 'Sold Team', 'Sold Price'])
-    for p in players:
-        ws.append([p.name, p.village, p.mobile, p.playing_style, p.age, p.base_price, p.status,
+    ws.append(['S.No', 'Name', 'Village', 'Mobile', 'Playing Style', 'Age', 'Base Price', 'Status', 'Sold Team', 'Sold Price'])
+    for idx, p in enumerate(players):
+        ws.append([idx + 1, p.name, p.village, p.mobile, p.playing_style, p.age, p.base_price, p.status,
                    p.sold_team.name if p.sold_team else '', p.sold_price or ''])
     output = io.BytesIO()
     wb.save(output)
@@ -286,7 +286,7 @@ def _export_teams_excel(teams, tournament):
                 row_fill = fill_even_row if p_idx % 2 == 0 else fill_odd_row
 
             c_pname = ws.cell(row=r, column=col_start)
-            c_pname.value = p.name
+            c_pname.value = f"{p_idx + 1}. {p.name}"
             c_pname.font = font_data
             c_pname.alignment = align_center
             c_pname.fill = row_fill
@@ -338,9 +338,9 @@ def _export_auction_excel(sold_players, tournament):
     wb = Workbook()
     ws = wb.active
     ws.title = 'Auction Report'
-    ws.append(['Player', 'Village', 'Playing Style', 'Base Price', 'Sold Price', 'Sold Team', 'Sold At'])
-    for p in sold_players:
-        ws.append([p.name, p.village, p.playing_style, p.base_price, p.sold_price,
+    ws.append(['S.No', 'Player', 'Village', 'Playing Style', 'Base Price', 'Sold Price', 'Sold Team', 'Sold At'])
+    for idx, p in enumerate(sold_players):
+        ws.append([idx + 1, p.name, p.village, p.playing_style, p.base_price, p.sold_price,
                    p.sold_team.name if p.sold_team else '', str(p.sold_at) if p.sold_at else ''])
     output = io.BytesIO()
     wb.save(output)
@@ -362,12 +362,12 @@ def _export_players_pdf(players, tournament):
     styles = getSampleStyleSheet()
     elements = [Paragraph(f'{tournament.name} - Players Report', styles['Title'])]
 
-    data = [['Name', 'Village', 'Style', 'Base Price', 'Status', 'Sold Team', 'Sold Price']]
-    for p in players:
-        data.append([p.name, p.village or '', p.playing_style or '', f'₹{p.base_price}', p.status,
+    data = [['S.No', 'Name', 'Village', 'Style', 'Base Price', 'Status', 'Sold Team', 'Sold Price']]
+    for idx, p in enumerate(players):
+        data.append([str(idx + 1), p.name, p.village or '', p.playing_style or '', f'₹{p.base_price}', p.status,
                      p.sold_team.name if p.sold_team else '', f'₹{p.sold_price}' if p.sold_price else ''])
 
-    table = Table(data)
+    table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0a1628')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -487,7 +487,7 @@ def _export_teams_pdf(teams, tournament):
             
             for p_idx, p in enumerate(players):
                 r = 6 + p_idx
-                grid[r][col_start] = p.name
+                grid[r][col_start] = f"{p_idx + 1}. {p.name}"
                 grid[r][col_end] = f"Rs. {p.sold_price:,.0f}" if p.sold_price is not None else "-"
                 
                 if highest_p and p.id == highest_p.id:
@@ -536,12 +536,12 @@ def _export_auction_pdf(sold_players, tournament):
     styles = getSampleStyleSheet()
     elements = [Paragraph(f'{tournament.name} - Auction Report', styles['Title'])]
 
-    data = [['Player', 'Village', 'Style', 'Base Price', 'Sold Price', 'Sold Team']]
-    for p in sold_players:
-        data.append([p.name, p.village or '', p.playing_style or '', f'₹{p.base_price}',
+    data = [['S.No', 'Player', 'Village', 'Style', 'Base Price', 'Sold Price', 'Sold Team']]
+    for idx, p in enumerate(sold_players):
+        data.append([str(idx + 1), p.name, p.village or '', p.playing_style or '', f'₹{p.base_price}',
                      f'₹{p.sold_price}', p.sold_team.name if p.sold_team else ''])
 
-    table = Table(data)
+    table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0a1628')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),

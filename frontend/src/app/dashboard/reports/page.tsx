@@ -251,6 +251,7 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader className="bg-navy/60">
                         <TableRow className="border-border/20">
+                          <TableHead className="text-gold w-[60px]">S.No</TableHead>
                           <TableHead className="text-gold">Name</TableHead>
                           <TableHead className="text-gold">Village</TableHead>
                           <TableHead className="text-gold">Mobile</TableHead>
@@ -264,8 +265,9 @@ export default function ReportsPage() {
                       </TableHeader>
                       <TableBody>
                         {reportData.players && reportData.players.length > 0 ? (
-                          reportData.players.map((p) => (
+                          reportData.players.map((p, idx) => (
                             <TableRow key={p.id} className="border-border/10 hover:bg-navy-light/10">
+                              <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                               <TableCell className="font-semibold text-foreground">{p.name}</TableCell>
                               <TableCell className="text-muted-foreground">{p.village || '-'}</TableCell>
                               <TableCell className="text-muted-foreground">{p.mobile || '-'}</TableCell>
@@ -286,7 +288,7 @@ export default function ReportsPage() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">No players found</TableCell>
+                            <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">No players found</TableCell>
                           </TableRow>
                         )}
                       </TableBody>
@@ -368,7 +370,7 @@ export default function ReportsPage() {
                                   </TableHeader>
                                   <TableBody>
                                     {t.players && t.players.length > 0 ? (
-                                      t.players.map((p) => {
+                                      t.players.map((p, p_idx) => {
                                         const isHighest = highestPaid && p.id === highestPaid.id;
                                         return (
                                           <TableRow
@@ -378,7 +380,7 @@ export default function ReportsPage() {
                                             }`}
                                           >
                                             <TableCell className="py-1.5 truncate max-w-[120px] text-center border-r border-border/10 font-medium">
-                                              {p.name}
+                                              {p_idx + 1}. {p.name}
                                             </TableCell>
                                             <TableCell className={`py-1.5 text-center font-bold ${isHighest ? 'text-yellow-400' : 'text-green-400'}`}>
                                               ₹{(p.sold_price || 0).toLocaleString('en-IN')}
@@ -408,6 +410,7 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader className="bg-navy/60">
                         <TableRow className="border-border/20">
+                          <TableHead className="text-gold w-[60px]">S.No</TableHead>
                           <TableHead className="text-gold">Player Name</TableHead>
                           <TableHead className="text-gold">Village</TableHead>
                           <TableHead className="text-gold">Playing Style</TableHead>
@@ -419,8 +422,9 @@ export default function ReportsPage() {
                       </TableHeader>
                       <TableBody>
                         {reportData.sold_players && reportData.sold_players.length > 0 ? (
-                          reportData.sold_players.map((p) => (
+                          reportData.sold_players.map((p, idx) => (
                             <TableRow key={p.id} className="border-border/10 hover:bg-navy-light/10">
+                              <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                               <TableCell className="font-semibold text-foreground">{p.name}</TableCell>
                               <TableCell className="text-muted-foreground">{p.village || '-'}</TableCell>
                               <TableCell className="text-muted-foreground">{p.playing_style || '-'}</TableCell>
@@ -436,7 +440,7 @@ export default function ReportsPage() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">No sold players yet</TableCell>
+                            <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">No sold players yet</TableCell>
                           </TableRow>
                         )}
                       </TableBody>
