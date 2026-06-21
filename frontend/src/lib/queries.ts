@@ -114,7 +114,7 @@ export function usePublicPlayers(tournamentId: number | null | undefined) {
   return useQuery<Player[]>({
     queryKey: queryKeys.publicPlayers(tournamentId!),
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/public/tournament/${tournamentId}/players`);
+      const res = await fetch(`${API_BASE}/api/public/tournament/${tournamentId}/players`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Tournament not found');
       }
@@ -136,7 +136,7 @@ export function usePublicTournament(tournamentId: number | null | undefined) {
   return useQuery({
     queryKey: queryKeys.publicTournament(tournamentId!),
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/public/tournament/${tournamentId}`);
+      const res = await fetch(`${API_BASE}/api/public/tournament/${tournamentId}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Tournament not found');
       }
@@ -155,7 +155,7 @@ export function usePublicTournaments() {
   return useQuery<Tournament[]>({
     queryKey: queryKeys.publicTournaments,
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/public/tournaments`);
+      const res = await fetch(`${API_BASE}/api/public/tournaments`, { cache: 'no-store' });
       const data = await res.json();
       return data.tournaments || [];
     },

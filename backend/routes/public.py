@@ -29,7 +29,7 @@ def get_public_tournaments():
     tournaments = Tournament.query.order_by(Tournament.created_at.desc()).all()
     from flask import make_response
     response = make_response(jsonify({'tournaments': [t.to_dict() for t in tournaments]}))
-    response.headers['Cache-Control'] = 'public, max-age=10, stale-while-revalidate=30'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     cache.set(cache_key, response, timeout=10)
     return response
 
@@ -137,7 +137,7 @@ def get_public_players(tournament_id):
     ).order_by(Player.name).all()
     from flask import make_response
     response = make_response(jsonify({'players': [p.to_dict() for p in players]}))
-    response.headers['Cache-Control'] = 'public, max-age=10, stale-while-revalidate=30'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     cache.set(cache_key, response, timeout=10)
     return response
 
@@ -180,7 +180,7 @@ def get_public_tournament_by_id(tournament_id):
         'advertisements': [a.to_dict() for a in ads],
         'teams': [t.to_dict() for t in teams],
     }))
-    response.headers['Cache-Control'] = 'public, max-age=5, stale-while-revalidate=15'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
 
