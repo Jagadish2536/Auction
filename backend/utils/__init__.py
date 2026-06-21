@@ -160,3 +160,28 @@ def verify_registration_code(code):
     except Exception:
         pass
     return None
+
+
+def clear_tournament_caches(tournament_id):
+    """Clear Flask-Caching keys for public pages and analytics of a tournament."""
+    if not tournament_id:
+        return
+    try:
+        from flask import current_app
+        cache = None
+        if "cache" in current_app.extensions:
+            caches = list(current_app.extensions["cache"].keys())
+            if caches:
+                cache = caches[0]
+        if not cache:
+            # Fallback import to avoid circular dependency
+            from app import cache
+        if cache:
+            cache.delete(f'public_players_{tournament_id}')
+            cache.delete(f'live_state_{tournament_id}')
+            cache.delete(f'analytics_dashboard_{tournament_id}')
+            cache.delete('public_tournaments_list')
+            print(f"[INFO] Cleared public/analytics cache for tournament {tournament_id}")
+    except Exception as e:
+        print(f"[WARNING] Failed to clear cache for tournament {tournament_id}: {e}")
+

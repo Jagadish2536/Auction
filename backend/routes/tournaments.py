@@ -4,7 +4,7 @@ from models.database import db
 from models.tournament import Tournament
 from models.auction import AuctionState
 from middleware import role_required, get_current_user, tournament_scope_required
-from utils import save_upload
+from utils import save_upload, clear_tournament_caches
 
 tournaments_bp = Blueprint('tournaments', __name__, url_prefix='/api/tournaments')
 
@@ -88,6 +88,7 @@ def create_tournament():
     auction_state = AuctionState(tournament_id=tournament.id)
     db.session.add(auction_state)
     db.session.commit()
+    clear_tournament_caches(tournament.id)
 
     from app import socketio
     socketio.emit('tournament:change', {'action': 'created', 'tournament_id': tournament.id})
@@ -169,6 +170,7 @@ def update_tournament(tournament_id):
             tournament.logo = logo_path
 
     db.session.commit()
+    clear_tournament_caches(tournament.id)
     from app import socketio
     socketio.emit('tournament:change', {'action': 'updated', 'tournament_id': tournament.id})
     return jsonify({'tournament': tournament.to_dict(), 'message': 'Tournament updated successfully'}), 200
@@ -227,6 +229,7 @@ def delete_tournament(tournament_id):
         # 9. Delete the tournament itself
         db.session.delete(tournament)
         db.session.commit()
+        clear_tournament_caches(tournament_id)
 
         from app import socketio
         socketio.emit('tournament:change', {'action': 'deleted', 'tournament_id': tournament_id})

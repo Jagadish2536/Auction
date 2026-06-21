@@ -4,7 +4,7 @@ from models.database import db
 from models.team import Team
 from models.tournament import Tournament
 from middleware import role_required, tournament_scope_required
-from utils import save_upload
+from utils import save_upload, clear_tournament_caches
 
 teams_bp = Blueprint('teams', __name__, url_prefix='/api/tournaments/<int:tournament_id>/teams')
 
@@ -62,6 +62,7 @@ def create_team(tournament_id):
 
     db.session.add(team)
     db.session.commit()
+    clear_tournament_caches(tournament_id)
     from app import socketio
     socketio.emit('team:change', {'action': 'created', 'tournament_id': tournament_id, 'team_id': team.id})
     return jsonify({'team': team.to_dict(), 'message': 'Team created successfully'}), 201
@@ -96,6 +97,7 @@ def update_team(tournament_id, team_id):
             team.logo = logo_path
 
     db.session.commit()
+    clear_tournament_caches(tournament_id)
     from app import socketio
     socketio.emit('team:change', {'action': 'updated', 'tournament_id': tournament_id, 'team_id': team.id})
     return jsonify({'team': team.to_dict(), 'message': 'Team updated successfully'}), 200
@@ -109,6 +111,7 @@ def delete_team(tournament_id, team_id):
     team = Team.query.filter_by(id=team_id, tournament_id=tournament_id).first_or_404()
     db.session.delete(team)
     db.session.commit()
+    clear_tournament_caches(tournament_id)
     from app import socketio
     socketio.emit('team:change', {'action': 'deleted', 'tournament_id': tournament_id, 'team_id': team_id})
     return jsonify({'message': 'Team deleted successfully'}), 200

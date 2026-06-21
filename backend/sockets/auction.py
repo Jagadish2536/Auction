@@ -8,6 +8,8 @@ from models.auction import AuctionState, BidHistory
 from models.player import Player
 from models.team import Team
 from models.tournament import Tournament
+from utils import clear_tournament_caches
+
 
 # In-memory tracking — all keyed by tournament_id for perfect isolation
 active_viewers = {}       # tournament_id -> set of sids
@@ -255,6 +257,8 @@ def register_auction_events(socketio):
             tournament.status = 'auction_live'
             tournament.registration_open = False
         db.session.commit()
+        clear_tournament_caches(tournament_id)
+        socketio.emit('tournament:change', {'action': 'live', 'tournament_id': tournament_id})
         room = f'auction_{tournament_id}'
         socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
         _broadcast_message(socketio, tournament_id, '🏏 Auction has started!', 'success')
@@ -270,6 +274,8 @@ def register_auction_events(socketio):
                 tournament.status = 'auction_paused'
             db.session.commit()
             _cancel_timer(tournament_id)  # Stop the server timer
+            clear_tournament_caches(tournament_id)
+            socketio.emit('tournament:change', {'action': 'paused', 'tournament_id': tournament_id})
             room = f'auction_{tournament_id}'
             socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
             _broadcast_message(socketio, tournament_id, '⏸️ Auction paused', 'warning')
@@ -284,6 +290,8 @@ def register_auction_events(socketio):
             if tournament:
                 tournament.status = 'auction_live'
             db.session.commit()
+            clear_tournament_caches(tournament_id)
+            socketio.emit('tournament:change', {'action': 'live', 'tournament_id': tournament_id})
             room = f'auction_{tournament_id}'
             socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
             _broadcast_message(socketio, tournament_id, '▶️ Auction resumed', 'success')
@@ -308,6 +316,9 @@ def register_auction_events(socketio):
             ).update({Player.status: 'unsold'})
             db.session.commit()
             _cancel_timer(tournament_id)
+            clear_tournament_caches(tournament_id)
+            socketio.emit('player:change', {'action': 'ended', 'tournament_id': tournament_id})
+            socketio.emit('tournament:change', {'action': 'ended', 'tournament_id': tournament_id})
             room = f'auction_{tournament_id}'
             socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
             _broadcast_message(socketio, tournament_id, '🏁 Auction has ended! Remaining available players marked as Unsold.', 'info')
@@ -333,6 +344,8 @@ def register_auction_events(socketio):
             tournament_id=tournament_id, status='available'
         ).update({Player.status: 'unsold'})
         db.session.commit()
+        clear_tournament_caches(tournament_id)
+        socketio.emit('player:change', {'action': 'bulk_unsold', 'tournament_id': tournament_id})
         room = f'auction_{tournament_id}'
         socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
         _broadcast_message(socketio, tournament_id, '⚡ All remaining available players moved to Unsold.', 'success')
@@ -491,6 +504,9 @@ def register_auction_events(socketio):
         db.session.commit()
 
         _cancel_timer(tournament_id)
+        clear_tournament_caches(tournament_id)
+        socketio.emit('player:change', {'action': 'sold', 'tournament_id': tournament_id, 'player_id': player.id})
+        socketio.emit('team:change', {'action': 'updated', 'tournament_id': tournament_id, 'team_id': team.id})
 
         room = f'auction_{tournament_id}'
         socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
@@ -521,6 +537,8 @@ def register_auction_events(socketio):
         db.session.commit()
 
         _cancel_timer(tournament_id)
+        clear_tournament_caches(tournament_id)
+        socketio.emit('player:change', {'action': 'unsold', 'tournament_id': tournament_id, 'player_id': player.id})
 
         room = f'auction_{tournament_id}'
         socketio.emit('auction:state', _get_full_state(tournament_id), room=room)
@@ -557,6 +575,10 @@ def register_auction_events(socketio):
         last_sold.sold_price = None
         last_sold.sold_at = None
         db.session.commit()
+        clear_tournament_caches(tournament_id)
+        socketio.emit('player:change', {'action': 'undone', 'tournament_id': tournament_id, 'player_id': last_sold.id})
+        if team:
+            socketio.emit('team:change', {'action': 'updated', 'tournament_id': tournament_id, 'team_id': team.id})
 
         room = f'auction_{tournament_id}'
         socketio.emit('auction:state', _get_full_state(tournament_id), room=room)

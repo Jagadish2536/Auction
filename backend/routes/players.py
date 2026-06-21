@@ -5,7 +5,7 @@ from models.database import db
 from models.player import Player
 from models.tournament import Tournament
 from middleware import role_required, tournament_scope_required
-from utils import save_upload, allowed_file
+from utils import save_upload, allowed_file, clear_tournament_caches
 import re
 
 players_bp = Blueprint('players', __name__, url_prefix='/api/tournaments/<int:tournament_id>/players')
@@ -128,6 +128,7 @@ def create_player(tournament_id):
 
     db.session.add(player)
     db.session.commit()
+    clear_tournament_caches(tournament_id)
     from app import socketio
     socketio.emit('player:change', {'action': 'created', 'tournament_id': tournament_id, 'player_id': player.id})
     return jsonify({'player': player.to_dict(), 'message': 'Player created successfully'}), 201
@@ -175,6 +176,7 @@ def update_player(tournament_id, player_id):
             player.photo = photo_path
 
     db.session.commit()
+    clear_tournament_caches(tournament_id)
     from app import socketio
     socketio.emit('player:change', {'action': 'updated', 'tournament_id': tournament_id, 'player_id': player.id})
     return jsonify({'player': player.to_dict(), 'message': 'Player updated successfully'}), 200
@@ -188,6 +190,7 @@ def delete_player(tournament_id, player_id):
     player = Player.query.filter_by(id=player_id, tournament_id=tournament_id).first_or_404()
     db.session.delete(player)
     db.session.commit()
+    clear_tournament_caches(tournament_id)
     from app import socketio
     socketio.emit('player:change', {'action': 'deleted', 'tournament_id': tournament_id, 'player_id': player_id})
     return jsonify({'message': 'Player deleted successfully'}), 200
@@ -285,6 +288,7 @@ def bulk_import_players(tournament_id):
             count += 1
 
         db.session.commit()
+        clear_tournament_caches(tournament_id)
         from app import socketio
         socketio.emit('player:change', {'action': 'bulk_imported', 'tournament_id': tournament_id})
         return jsonify({'message': f'{count} players imported successfully', 'count': count}), 201

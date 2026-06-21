@@ -250,6 +250,8 @@ def register_player_public(tournament_id):
 
     db.session.add(player)
     db.session.commit()
+    from utils import clear_tournament_caches
+    clear_tournament_caches(tournament.id)
 
     from app import socketio
     socketio.emit('player:change', {'action': 'registered', 'tournament_id': tournament.id, 'player_id': player.id})

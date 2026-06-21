@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import OptimizedImage, { DEFAULT_PLAYER_PHOTO } from '@/components/ui/OptimizedImage';
 import VirtualPlayerList from '@/components/ui/VirtualPlayerList';
-import { usePublicPlayers } from '@/lib/queries';
+import { usePublicPlayers, useSocketInvalidation } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { queryKeys } from '@/lib/queries';
@@ -43,6 +43,7 @@ export default function LivePage() {
   // Modal details & all players state
   const queryClient = useQueryClient();
   const { data: players = [], refetch: refetchPlayers } = usePublicPlayers(tournamentId);
+  useSocketInvalidation(tournamentId);
   const [activeFilter, setActiveFilter] = useState<'total' | 'sold' | 'unsold' | 'left' | null>(null);
   const [selectedSquadPlayer, setSelectedSquadPlayer] = useState<Player | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
