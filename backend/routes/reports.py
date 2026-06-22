@@ -362,9 +362,9 @@ def _export_players_pdf(players, tournament):
     styles = getSampleStyleSheet()
     elements = [Paragraph(f'{tournament.name} - Players Report', styles['Title'])]
 
-    data = [['S.No', 'Name', 'Village', 'Style', 'Base Price', 'Status', 'Sold Team', 'Sold Price']]
+    data = [['S.No', 'Name', 'Village', 'Mobile', 'Style', 'Base Price', 'Status', 'Sold Team', 'Sold Price']]
     for idx, p in enumerate(players):
-        data.append([str(idx + 1), p.name, p.village or '', p.playing_style or '', f'₹{p.base_price}', p.status,
+        data.append([str(idx + 1), p.name, p.village or '', p.mobile or '', p.playing_style or '', f'₹{p.base_price}', p.status,
                      p.sold_team.name if p.sold_team else '', f'₹{p.sold_price}' if p.sold_price else ''])
 
     table = Table(data, repeatRows=1)
